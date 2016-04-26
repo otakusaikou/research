@@ -12,7 +12,7 @@ mode = None
 
 
 def getLine(start, end):
-    """Bresenhams' Line Algorithm.
+    """Bresenham's Line Algorithm.
 
     Return the a seris of image coordinates representing the line between
     two given points.

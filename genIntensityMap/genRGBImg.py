@@ -19,7 +19,7 @@ def genIntensityMap(inputFileName, outputFileName, sf):
     # Read LiDAR points information
     data = pd.read_csv(inputFileName, header=0, delim_whitespace=True)
 
-    X = data["Y"]   # Use the Y coordinates as image column
+    X = -data["Y"]  # Use the Y coordinates as image column
     Y = -data["Z"]  # Use the Z coordinates as image row
     R = data["R"]
     G = data["G"]

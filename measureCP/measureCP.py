@@ -72,7 +72,7 @@ def mousePress(event, tree, rangeX, rangeY, data, IO):
             if ax.colNum == 0:
                 distance, location = tree.query(
                     [rangeX[int(event.xdata)], rangeY[int(event.ydata)]],
-                    k=1, distance_upper_bound=0.05)
+                    k=1, distance_upper_bound=0.01)
 
                 # Create new point or replace old point
                 if location < len(data):
@@ -158,12 +158,12 @@ def getIO(IOFileName):
 
 def main():
     # Read images
-    intensityImg = imread('../images/Intensity50.png', 0)
+    intensityImg = imread('../images/Intensity100.png', 0)
     rgbImg = imread('../images/P1_L.jpg')
     outputFileName = 'result.txt'
     LiDARFileName = '../ptCloud/XYZI.txt'
     IOFileName = 'IO.txt'
-    sf = 50     # Scale factor for LiDAR image
+    sf = 100     # Scale factor for LiDAR image
 
     measureProc(
         intensityImg, rgbImg, LiDARFileName, outputFileName, sf, IOFileName)

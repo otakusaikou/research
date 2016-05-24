@@ -60,7 +60,7 @@ def measureProc(
     with open(outputFileName, 'w') as fout:
         for pt in ptList:
             fout.write("Point%d" % (ptList.index(pt) + 1))
-            fout.write((" %.6f" * 5) % tuple(pt) + "\n")
+            fout.write((" %.6f" * 7) % tuple(pt) + "\n")
 
 
 def mousePress(event, tree, rangeX, rangeY, data, IO):
@@ -83,7 +83,8 @@ def mousePress(event, tree, rangeX, rangeY, data, IO):
             # For colored photo
             elif ax.colNum == 1:
                 ax.plot(event.xdata, event.ydata, "ro")
-                resetPt(ax, allDist(event.ydata, event.xdata, IO))
+                resetPt(ax, allDist(event.ydata, event.xdata, IO),
+                        (event.ydata, event.xdata))
 
         # If the event is mouse right click, clean template points
         elif event.button == 3:
@@ -103,20 +104,21 @@ def keyPress(event):
             print "Point%2d has been saved" % len(ptList)
 
         if event.key == 'd':            # Show current point information
-            print "[x, y]: [%8.3f, %8.3f]," % tuple(curPt[:2]),
-            print "[X, Y, Z]: [%12.8f, %12.8f, %12.8f]" % tuple(curPt[2:])
+            print "[row, col]: [%8.3f, %8.3f]," % tuple(curPt[:2]),
+            print "[x, y]: [%8.3f, %8.3f]," % tuple(curPt[2:4]),
+            print "[X, Y, Z]: [%12.8f, %12.8f, %12.8f]" % tuple(curPt[4:])
 
 
 def savePt(axes):
     """Store current object point and image point coordinates to point list."""
     global ptList, curPt
     ptList.append(curPt)
-    curPt = [0, 0, 0, 0, 0]
+    curPt = [0, 0, 0, 0, 0, 0, 0]
     for ax in axes:
         ax.lines[-1].set_color('b')  # Change the color of stored point
 
 
-def resetPt(ax, data):
+def resetPt(ax, data, imgPt=None):
     """Reset template point."""
     # Remove old template point object
     if len(ax.lines) > 1:
@@ -126,9 +128,10 @@ def resetPt(ax, data):
     # Update the current point information and the point list
     global ptList, curPt
     if ax.colNum == 0:      # For intensity image
-        curPt[2:5] = data
+        curPt[4:] = data
     elif ax.colNum == 1:    # For colored photo
-        curPt[:2] = data
+        curPt[:2] = imgPt
+        curPt[2:4] = data
 
 
 def cleanPt(ax):
@@ -138,9 +141,9 @@ def cleanPt(ax):
         if ax.lines[-1].get_c() == 'r':
             ax.lines[-1].remove()
             if ax.colNum == 0:      # For intensity image
-                curPt[2:5] = (0, 0, 0)
+                curPt[4:7] = (0, 0, 0)
             elif ax.colNum == 1:    # For colored photo
-                curPt[:2] = (0, 0)
+                curPt[:4] = (0, 0, 0, 0)
 
 
 def getIO(IOFileName):
@@ -174,5 +177,5 @@ def main():
 if __name__ == '__main__':
     # Define global variables
     ptList = []
-    curPt = [0, 0, 0, 0, 0]     # x y X Y Z
+    curPt = [0, 0, 0, 0, 0, 0, 0]   # row col x y X Y Z
     main()

@@ -62,10 +62,10 @@ def xy2RowCol(IO, xcArr, ycArr):
     FuncF = lambdify((xcs, ycs, xps, yps), F)
 
     # Compute corresponding (row, column) values from given (x, y)
-    rowColArr = np.empty((0, 2))
     idx = 0
     curValue = 0    # Current percentage of completion
     ptNum = len(xcArr)
+    rowColArr = np.zeros((ptNum, 2))
     sys.stdout.write("(x, y) -> (row, col): %3d%%" % 0)
 
     for xc, yc in zip(xcArr, ycArr):
@@ -73,7 +73,7 @@ def xy2RowCol(IO, xcArr, ycArr):
         dX = np.ones(1)                 # Initial value for iteration
 
         # Iteration process
-        while abs(dX.sum()) > 10**-12:
+        while abs(dX.sum()) > 10**-6:
             # Compute coefficient matrix and constants matrix
             B = FuncJFx(*tuple(np.append((xc, yc), X0)))
             f = -FuncF(*tuple(np.append((xc, yc), X0)))
@@ -91,7 +91,7 @@ def xy2RowCol(IO, xcArr, ycArr):
         col = (xp + IO['Fw']/2.) / IO['px']
         row = (IO['Fh']/2. - yp) / IO['px']
 
-        rowColArr = np.vstack((rowColArr, [row, col]))
+        rowColArr[idx, :] = row, col
         idx += 1
 
         # Update the percentage of completion

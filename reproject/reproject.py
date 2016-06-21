@@ -7,6 +7,7 @@ import numpy as np
 from numpy import cos
 from numpy import sin
 from scipy.misc import imread
+import sys
 
 
 np.set_printoptions(suppress=True)  # Disable scientific notation for numpy
@@ -52,18 +53,11 @@ def getxy(IO, EO, objPts):
 
 
 def getInterpolation(img, x, y):
-    """Resample from right image, using bilinear interpolation."""
-    # Get coordinates of nearest four points
-    x0 = np.floor(x).astype(int)
-    x1 = x0 + 1
-    y0 = np.floor(y).astype(int)
-    y1 = y0 + 1
-
-    # Ensure the coordinates of four points are in the right image extent
-    x0 = np.clip(x0, 0, img.shape[1] - 1)
-    x1 = np.clip(x1, 0, img.shape[1] - 1)
-    y0 = np.clip(y0, 0, img.shape[0] - 1)
-    y1 = np.clip(y1, 0, img.shape[0] - 1)
+    """Resample from input image, using bilinear interpolation."""
+    # Get coordinates of nearest four points as well as ensuring the
+    # coordinates of four points are in the right image extent
+    x0, x1 = np.clip([x, x + 1], 0, img.shape[1] - 1).astype(int)
+    y0, y1 = np.clip([y, y + 1], 0, img.shape[0] - 1).astype(int)
 
     # Get intensity of nearest four points
     Ia = img[y0, x0]  # Upper left corner
@@ -82,10 +76,23 @@ def getInterpolation(img, x, y):
 
 def extractColor(rowColArr, img):
     """Extract color from image."""
-    rgbArr = np.empty((0, 3))
+    idx = 0
+    curValue = 0    # Current percentage of completion
+    ptNum = len(rowColArr)
+    rgbArr = np.zeros((ptNum, 3))
+    sys.stdout.write("Color interpolation process: %3d%%" % 0)
 
     for row in rowColArr:
-        rgbArr = np.vstack((rgbArr, getInterpolation(img, row[1], row[0])))
+        rgbArr[idx, :] = getInterpolation(img, row[1], row[0])
+        idx += 1
+
+        # Update the percentage of completion
+        if curValue < int(100.0 * idx / ptNum):
+            curValue = int(100.0 * idx / ptNum)
+            sys.stdout.write("\b" * 4)
+            sys.stdout.write("%3d%%" % curValue)
+            sys.stdout.flush()
+    sys.stdout.write("\n")
 
     return rgbArr.astype(int)
 

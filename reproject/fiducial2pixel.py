@@ -73,7 +73,8 @@ def xy2RowCol(IO, xcArr, ycArr):
         dX = np.ones(1)                 # Initial value for iteration
 
         # Iteration process
-        while abs(dX.sum()) > 10**-6:
+        c = 0       # Iteration count
+        while abs(dX.sum()) > 10**-6 and c < 5:
             # Compute coefficient matrix and constants matrix
             B = FuncJFx(*tuple(np.append((xc, yc), X0)))
             f = -FuncF(*tuple(np.append((xc, yc), X0)))
@@ -84,6 +85,7 @@ def xy2RowCol(IO, xcArr, ycArr):
             dX = N.I * t
 
             X0 += dX            # Update initial values
+            c += 1
 
         xp, yp = map(float, X0)
 

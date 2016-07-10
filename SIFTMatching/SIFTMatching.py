@@ -63,15 +63,18 @@ def match(fileName1, fileName2, ratio, show=False):
         plt.imshow(matchImg, "gray")
         plt.show()
 
+    matchesMask = np.array(matchesMask) == 1
+    return leftPts[matchesMask], rightPts[matchesMask]
+
 
 def main():
     if len(sys.argv) != 1:
         match(sys.argv[-2], sys.argv[-1], 0.8, show=True)
     else:
         match(
-            "../images/Intensity50_trim.png",
-            "../images/RGB_trim.png",
-            0.4,
+            "../images/P1_L_RGB50.png",
+            "../images/P1_C.jpg",
+            0.75,
             show=True)
 
     return 0

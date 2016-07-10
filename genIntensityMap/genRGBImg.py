@@ -65,8 +65,8 @@ def genIntensityMap(inputFileName, outputFileName, sf):
 
 def main():
     sf = 50     # The scale factor of enlargement
-    inputFileName = "../ptCloud/XYZRGBI.txt"
-    outputFileName = "RGB.png"
+    inputFileName = "../ptCloud/XYZRGB_P1_L_All.txt"
+    outputFileName = "../images/P1_L_RGB50.png"
 
     genIntensityMap(inputFileName, outputFileName, sf)
 

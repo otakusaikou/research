@@ -165,7 +165,7 @@ def main():
     rgbImg = imread('../images/P1_L.jpg')
     outputFileName = 'result.txt'
     LiDARFileName = '../ptCloud/XYZI.txt'
-    IOFileName = 'IO.txt'
+    IOFileName = '../param/IO.txt'
     sf = 100     # Scale factor for LiDAR image
 
     measureProc(

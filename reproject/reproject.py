@@ -99,9 +99,9 @@ def extractColor(rowColArr, img):
 
 def main():
     # Define file names
-    IOFileName = 'IO.txt'
-    EOFileName = 'EO.txt'
-    ptFileName = '../ptCloud/objPts.txt'
+    IOFileName = '../param/IO.txt'
+    EOFileName = '../param/EO_P1_L.txt'
+    ptFileName = '../ptCloud/XYZ_edited.txt'
     imgFileName = '../images/P1_L.jpg'
     outputPtFileName = 'result.txt'
 

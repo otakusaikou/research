@@ -32,7 +32,7 @@ def allDist(row, col, IO):
 def main():
     """Perform a simple test for this module."""
     # Read interior orientation information from file
-    fin = open("IO.txt")
+    fin = open("../param/IO.txt")
     data = map(lambda x: float(x), fin.readline().split())
     fin.close()
 

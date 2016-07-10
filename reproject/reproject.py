@@ -112,7 +112,7 @@ def main():
 
     # Read object points
     objPts = np.genfromtxt(ptFileName, dtype=[
-        ('Name', 'S15'), ('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')], skip_header=1)
+        ('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')], skip_header=1)
 
     # Reproject object points to image plane
     x, y = getxy(IO, EO, objPts)

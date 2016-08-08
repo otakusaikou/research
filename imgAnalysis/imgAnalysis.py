@@ -183,7 +183,7 @@ def showResult(rgbImg, intensityMap, mode):
 
 def main():
     rgbImgName = "../images/RGB.png"
-    intensityMapName = "../images/Intensity.png"
+    intensityMapName = "../images/Intensity100.png"
 
     # Read image and convert it from BGR to RGB
     global rgbImg, hsvImg, intensityMap, mode

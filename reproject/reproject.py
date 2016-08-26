@@ -6,11 +6,52 @@ from fiducial2pixel import xy2RowCol
 import numpy as np
 from numpy import cos
 from numpy import sin
+from pixel2fiducial import allDist
+from pixel2fiducial import img2frame
 from scipy.misc import imread
 import sys
 
 
 np.set_printoptions(suppress=True)  # Disable scientific notation for numpy
+
+
+def getPoint3d(ptFileName, IO, EO):
+    """Get the 3d point within the photo scene."""
+    objPts = np.genfromtxt(ptFileName, dtype=[
+        ('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')], skip_header=1)
+
+    # Acquire the average depth of field
+    XA = objPts['X'].mean()
+
+    # Compute the four corner coordinates of image (col, row)
+    width, height = round(IO['Fw'] / IO['px']), round(IO['Fh'] / IO['px'])
+    cnrPt = np.array([(0, 0), (width, 0), (width, height), (0, height)])
+
+    # Get point coordinates relative to fiducial axis
+    xf, yf = img2frame(cnrPt[:, 0], cnrPt[:, 1], IO)
+
+    # Compute corrected coordinates
+    xc, yc = allDist(xf, yf, IO)
+
+    f = IO['f']
+    XL, YL, ZL = EO[:3]
+    Omega, Phi, Kappa = map(np.radians, EO[3:6])
+    M = getM(Omega, Phi, Kappa)
+
+    # Compute the image extent in the object space
+    a = -(xc * M[2, 0] + f * M[0, 0]) / (xc * M[2, 1] + f * M[0, 1])
+    b = -(xc * M[2, 2] + f * M[0, 2]) / (xc * M[2, 1] + f * M[0, 1])
+    c = -(yc * M[2, 0] + f * M[1, 0]) / (yc * M[2, 2] + f * M[1, 2])
+    d = -(yc * M[2, 1] + f * M[1, 1]) / (yc * M[2, 2] + f * M[1, 2])
+    YA = ((a + b * c) / (1 - b * d)) * (XA - XL) + YL
+    ZA = ((c + a * d) / (1 - b * d)) * (XA - XL) + ZL
+
+    # Acquire the 3d point within the photo scene
+    Y = objPts['Y']
+    Z = objPts['Z']
+    mask = ((Y < YA.max()) & (Y > YA.min()) & (Z < ZA.max()) & (Z > ZA.min()))
+
+    return objPts[mask]
 
 
 def getM(Omega, Phi, Kappa):
@@ -55,9 +96,13 @@ def getxy(IO, EO, objPts):
 def getInterpolation(img, x, y):
     """Resample from input image, using bilinear interpolation."""
     # Get coordinates of nearest four points as well as ensuring the
-    # coordinates of four points are in the right image extent
-    x0, x1 = np.clip([x, x + 1], 0, img.shape[1] - 1).astype(int)
-    y0, y1 = np.clip([y, y + 1], 0, img.shape[0] - 1).astype(int)
+    # coordinates of four points are in the image extent
+    if ((x < 0) or (x + 1 > img.shape[1] - 1)) or \
+            ((y < 0) or (y + 1 > img.shape[0] - 1)):
+        return np.zeros((3)) - 1
+
+    x0, x1 = int(x), int(x + 1)
+    y0, y1 = int(y), int(y + 1)
 
     # Get intensity of nearest four points
     Ia = img[y0, x0]  # Upper left corner
@@ -100,9 +145,9 @@ def extractColor(rowColArr, img):
 def main():
     # Define file names
     IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P2_R.txt'
+    EOFileName = '../param/EO_P1_L.txt'
     ptFileName = '../ptCloud/XYZ_edited.txt'
-    imgFileName = '../images/P2_R.jpg'
+    imgFileName = '../images/P1_L.jpg'
     outputPtFileName = 'result.txt'
 
     IO = getIO(IOFileName)
@@ -111,8 +156,7 @@ def main():
     EO = np.genfromtxt(EOFileName)
 
     # Read object points
-    objPts = np.genfromtxt(ptFileName, dtype=[
-        ('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')], skip_header=1)
+    objPts = getPoint3d(ptFileName, IO, EO)
 
     # Reproject object points to image plane
     x, y = getxy(IO, EO, objPts)
@@ -123,6 +167,9 @@ def main():
     RGB = extractColor(rowColArr, img)
     ptSet = np.concatenate(
         (objPts[['X', 'Y', 'Z']].view(np.double).reshape(-1, 3), RGB), axis=1)
+
+    # Keep the points whose color are not equal to black
+    ptSet = ptSet[RGB.sum(axis=1) != -3].view()
 
     # Write out the result
     np.savetxt(

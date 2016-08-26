@@ -61,8 +61,12 @@ def getInterpolation(img, x, y):
     """Resample from input image, using bilinear interpolation."""
     # Get coordinates of nearest four points as well as ensuring the
     # coordinates of four points are in the right image extent
-    x0, x1 = np.clip([x, x + 1], 0, img.shape[1] - 1).astype(int)
-    y0, y1 = np.clip([y, y + 1], 0, img.shape[0] - 1).astype(int)
+    if ((x < 0) or (x + 1 > img.shape[1] - 1)) or \
+            ((y < 0) or (y + 1 > img.shape[0] - 1)):
+        return np.zeros((3)) - 1
+
+    x0, x1 = int(x), int(x + 1)
+    y0, y1 = int(y), int(y + 1)
 
     # Get intensity of nearest four points
     Ia = img[y0, x0]  # Upper left corner
@@ -235,7 +239,7 @@ def main():
         RGB, rowColArr), axis=1)
 
     # Keep the points whose color are not equal to black
-    ptSet = ptSet[RGB.sum(axis=1) != 0].view()
+    ptSet = ptSet[RGB.sum(axis=1) != -3].view()
 
     # Free the memory
     del objPts, x, y, img, RGB, rowColArr

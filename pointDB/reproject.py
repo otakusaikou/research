@@ -106,7 +106,7 @@ def getPoint3d(conn, IO, EO):
     """Get the 3d point within the photo scene."""
     cur = conn.cursor()     # Get cursor object of database connection
 
-    # Acquire the maximum depth of field
+    # Acquire the average depth of field
     sql = "SELECT AVG(X)\nFROM point3d;"
     cur.execute(sql)
     XA = cur.fetchone()[0]
@@ -202,8 +202,8 @@ def main():
 
     # Define file names
     IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P2_L.txt'
-    imgFileName = '../images/P2_L.jpg'
+    EOFileName = '../param/EO_P1_L.txt'
+    imgFileName = '../images/P1_L.jpg'
 
     IO = getIO(IOFileName)
 
@@ -234,7 +234,7 @@ def main():
         objPts[['X', 'Y', 'Z']].view(np.double).reshape(-1, 3),
         RGB, rowColArr), axis=1)
 
-    # Keep the point whose color are not equal to black
+    # Keep the points whose color are not equal to black
     ptSet = ptSet[RGB.sum(axis=1) != 0].view()
 
     # Free the memory

@@ -76,8 +76,8 @@ def xy2RowCol(IO, xcArr, ycArr):
         c = 0       # Iteration count
         while abs(dX.sum()) > 10**-6 and c < 5:
             # Compute coefficient matrix and constants matrix
-            B = FuncJFx(*tuple(np.append((xc, yc), X0)))
-            f = -FuncF(*tuple(np.append((xc, yc), X0)))
+            B = np.matrix(FuncJFx(*tuple(np.append((xc, yc), X0))))
+            f = np.matrix(-FuncF(*tuple(np.append((xc, yc), X0))))
 
             # Solve the unknown parameters
             N = B.T * B

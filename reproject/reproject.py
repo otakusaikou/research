@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """Extracting the corresponding color from image to object points."""
+import sys
+sys.path.insert(0, "../measureCP")
+from pixel2fiducial import allDist
 from fiducial2pixel import getIO
 from fiducial2pixel import xy2RowCol
 import numpy as np
 from numpy import cos
 from numpy import sin
-from pixel2fiducial import allDist
-from pixel2fiducial import img2frame
 from scipy.misc import imread
-import sys
 
 
 np.set_printoptions(suppress=True)  # Disable scientific notation for numpy
@@ -27,11 +27,8 @@ def getPoint3d(ptFileName, IO, EO):
     width, height = round(IO['Fw'] / IO['px']), round(IO['Fh'] / IO['px'])
     cnrPt = np.array([(0, 0), (width, 0), (width, height), (0, height)])
 
-    # Get point coordinates relative to fiducial axis
-    xf, yf = img2frame(cnrPt[:, 0], cnrPt[:, 1], IO)
-
-    # Compute corrected coordinates
-    xc, yc = allDist(xf, yf, IO)
+    # Compute corrected coordinates under the fiducial axis coordinate system
+    xc, yc = allDist(cnrPt[:, 1], cnrPt[:, 0], IO)
 
     f = IO['f']
     XL, YL, ZL = EO[:3]

@@ -74,7 +74,7 @@ def xy2RowCol(IO, xcArr, ycArr):
 
         # Iteration process
         c = 0       # Iteration count
-        while abs(dX.sum()) > 10**-6 and c < 5:
+        while abs(dX.sum()) > 10**-3 and c < 5:
             # Compute coefficient matrix and constants matrix
             B = np.matrix(FuncJFx(*tuple(np.append((xc, yc), X0))))
             f = np.matrix(-FuncF(*tuple(np.append((xc, yc), X0))))
@@ -87,7 +87,7 @@ def xy2RowCol(IO, xcArr, ycArr):
             X0 += dX            # Update initial values
             c += 1
 
-        xp, yp = map(float, X0)
+        xp, yp = np.array(X0).flatten()
 
         # From fiducial coordinate system to row and column
         col = (xp + IO['Fw']/2.) / IO['px']

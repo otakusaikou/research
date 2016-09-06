@@ -244,7 +244,6 @@ def main():
 
     updateDB(conn, ptSet, EO, imgFileName)
     conn.close()
-    np.savetxt("output.txt", ptSet, fmt="%d, %f, %f, %f, %d, %d, %d, %f, %f")
 
 
 if __name__ == '__main__':

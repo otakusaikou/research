@@ -18,8 +18,8 @@ def export(conn, imgFileNameList, outputPtFileNameList):
         np.savetxt(
             outputPtFileNameList[i],
             ptSet,
-            fmt="%.6f %.6f %.6f %d %d %d",
-            header="X Y Z R G B",
+            fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
+            header="X Y Z R G B row col",
             comments='')
 
 

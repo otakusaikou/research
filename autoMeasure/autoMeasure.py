@@ -1,6 +1,8 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import sys
 sys.path.insert(0, "../SIFTMatching")
-sys.path.insert(0, "../MeasureCP")
+sys.path.insert(0, "../measureCP")
 import numpy as np
 from measureCP import getIO
 from pixel2fiducial import allDist
@@ -29,11 +31,11 @@ def getTree(data, sf):
 
 def main():
     # Define input file names
-    LiDARFileName = '../ptCloud/XYZ.xyz'
+    LiDARFileName = '../ptCloud/P1_L.txt'
     IOFileName = '../param/IO.txt'
-    sf = 50     # Scale factor for LiDAR image
-    LiDARImgFileName = '../images/P1_L_RGB50.png'
-    photoName = '../images/P2_R.jpg'
+    sf = 100     # Scale factor for LiDAR image
+    LiDARImgFileName = '../images/P1_L_RGB100.png'
+    photoName = '../images/P2_L.jpg'
     outputFileName = 'result.txt'
 
     # SIFT matching parameters

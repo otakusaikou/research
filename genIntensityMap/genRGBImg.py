@@ -9,18 +9,19 @@ generate a rgb image.
 """
 import numpy as np
 import pandas as pd
-import sys
 from scipy.misc import imsave
 from scipy import spatial
 
 
-def genIntensityMap(inputFileName, outputFileName, sf):
+def genIntensityMap(inputFileName, outputFileName, sf, n=4):
     """Generate an intensity map with given point file and scale factor."""
     # Read LiDAR points information
     data = pd.read_csv(inputFileName, header=0, delim_whitespace=True)
 
     X = -data["Y"]  # Use the Y coordinates as image column
     Y = -data["Z"]  # Use the Z coordinates as image row
+
+    # The color information
     R = data["R"]
     G = data["G"]
     B = data["B"]
@@ -37,38 +38,42 @@ def genIntensityMap(inputFileName, outputFileName, sf):
     threshold = (((X.max() - X.min()) / width)**2 +
                  ((Y.max() - Y.min()) / height)**2)**0.5
 
+    # Generate grid points
+    xi, yi = np.meshgrid(rangeX, rangeY)
+    pts = np.dstack((xi.ravel(), yi.ravel())).reshape(-1, 2)
+
     # Perform inverse distance weighted interpolation
-    rgb = np.zeros((height * width, 3))
-    idx = 0
-
     tree = spatial.cKDTree(zip(X, Y))
-    for y in rangeY:
-        for x in rangeX:
-            distance, location = tree.query(
-                [x, y], k=4, distance_upper_bound=threshold)
-            if (~np.isinf(distance)).sum():
-                rgb[idx, 0] = (R[location] / distance).sum() / \
-                    (1.0 / distance).sum()
-                rgb[idx, 1] = (G[location] / distance).sum() / \
-                    (1.0 / distance).sum()
-                rgb[idx, 2] = (B[location] / distance).sum() / \
-                    (1.0 / distance).sum()
+    distance, location = tree.query(
+        pts, k=n, distance_upper_bound=threshold)
+    mask = np.sum(~np.isinf(distance), axis=1) != 0
 
-            idx += 1
-        sys.stdout.write("%3d%%" % (100.0 * idx / (height * width)))
-        sys.stdout.flush()
-        sys.stdout.write("\b" * 4)
+    valR = R[location[mask].ravel()].reshape(-1, n)
+    valR[np.isnan(valR)] = 0
+    valG = G[location[mask].ravel()].reshape(-1, n)
+    valG[np.isnan(valG)] = 0
+    valB = B[location[mask].ravel()].reshape(-1, n)
+    valB[np.isnan(valB)] = 0
+    weight = 1.0 / distance[mask]
 
-    rgb = rgb.reshape(height, width, 3)
+    rgb = np.zeros((height, width, 3))
+    rgb[mask.reshape(xi.shape), 0] = np.sum(valR * weight, axis=1) / \
+        np.sum(weight, axis=1)
+    rgb[mask.reshape(xi.shape), 1] = np.sum(valG * weight, axis=1) / \
+        np.sum(weight, axis=1)
+    rgb[mask.reshape(xi.shape), 2] = np.sum(valB * weight, axis=1) / \
+        np.sum(weight, axis=1)
+
     imsave(outputFileName, rgb.astype(np.uint8))
 
 
 def main():
-    sf = 50     # The scale factor of enlargement
-    inputFileName = "../ptCloud/XYZRGB_P1_L_All.txt"
-    outputFileName = "../images/P1_L_RGB50.png"
+    sf = 100     # The scale factor of enlargement
+    n = 4       # The number of nearest neighbors for kd-tree query
+    inputFileName = "../ptCloud/P1_L.txt"
+    outputFileName = "../images/P1_L_RGB100.png"
 
-    genIntensityMap(inputFileName, outputFileName, sf)
+    genIntensityMap(inputFileName, outputFileName, sf, n)
 
 
 if __name__ == '__main__':

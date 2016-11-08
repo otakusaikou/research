@@ -142,10 +142,15 @@ def extractColor(rowColArr, img):
 def main():
     # Define file names
     IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P1_L.txt'
+    EOFileName = '../param/EO_P1_L_less.txt'
     ptFileName = '../ptCloud/XYZ_edited.txt'
     imgFileName = '../images/P1_L.jpg'
-    outputPtFileName = 'result.txt'
+    outputPtFileName = 'P1_L_less.txt'
+
+    EOFileName = '../param/EO_P1_R_more.txt'
+    ptFileName = '../ptCloud/newLines_P2R.txt'
+    imgFileName = '../images/P1_R.jpg'
+    outputPtFileName = 'P1R_addedLine.txt'
 
     IO = getIO(IOFileName)
 

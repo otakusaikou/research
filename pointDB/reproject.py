@@ -203,8 +203,8 @@ def main():
 
     # Define file names
     IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P1_L.txt'
-    imgFileName = '../images/P1_L.jpg'
+    EOFileName = '../param/EO_P3_L_more.txt'
+    imgFileName = '../images/P3_L.jpg'
 
     IO = getIO(IOFileName)
 

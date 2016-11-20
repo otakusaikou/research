@@ -58,7 +58,7 @@ def xy2RowCol(IO, xcArr, ycArr):
 
     # Create function object for F and its jacobian matrix
     JFx = F.jacobian([xps, yps])
-    FuncJFx = lambdify((xcs, ycs, xps, yps), JFx)
+    FuncJFx = lambdify((xps, yps), JFx)
     FuncF = lambdify((xcs, ycs, xps, yps), F)
 
     # Compute corresponding (row, column) values from given (x, y)
@@ -76,7 +76,7 @@ def xy2RowCol(IO, xcArr, ycArr):
         c = 0       # Iteration count
         while abs(dX.sum()) > 10**-3 and c < 5:
             # Compute coefficient matrix and constants matrix
-            B = np.matrix(FuncJFx(*tuple(np.append((xc, yc), X0))))
+            B = np.matrix(FuncJFx(*X0))
             f = np.matrix(-FuncF(*tuple(np.append((xc, yc), X0))))
 
             # Solve the unknown parameters
@@ -87,7 +87,7 @@ def xy2RowCol(IO, xcArr, ycArr):
             X0 += dX            # Update initial values
             c += 1
 
-        xp, yp = np.array(X0).flatten()
+        xp, yp = np.array(X0).ravel()
 
         # From fiducial coordinate system to row and column
         col = (xp + IO['Fw']/2.) / IO['px']

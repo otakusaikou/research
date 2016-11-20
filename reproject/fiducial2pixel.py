@@ -6,7 +6,6 @@ from sympy import lambdify
 from sympy import Matrix
 from sympy import sqrt
 from sympy import symbols
-import sys
 
 
 def getIO(IOFileName):
@@ -56,55 +55,31 @@ def xy2RowCol(IO, xcArr, ycArr):
         ycs + y0 - ybar * (r**2*IO['k1']+r**4*IO['k2']+r**6*IO['k3']) -
         (2*IO['p1']*xbar*ybar+IO['p2']*(r**2+2*ybar**2)) - yps])
 
-    # Create function object for F and its jacobian matrix
+    # Create function object for normal matrix N and constant matrix t
     JFx = F.jacobian([xps, yps])
-    FuncJFx = lambdify((xps, yps), JFx)
-    FuncF = lambdify((xcs, ycs, xps, yps), F)
+    FuncN = lambdify((xps, yps), JFx.T * JFx)
+    Funct = lambdify((xcs, ycs, xps, yps), JFx.T * (-F))
 
     # Compute corresponding (row, column) values from given (x, y)
-    idx = 0
-    curValue = 0    # Current percentage of completion
-    ptNum = len(xcArr)
-    rowColArr = np.zeros((ptNum, 2))
-    sys.stdout.write("(x, y) -> (row, col): %3d%%" % 0)
+    X0 = np.dstack((xcArr, ycArr)).reshape(-1, 2)       # Initial values
 
-    for xc, yc in zip(xcArr, ycArr):
-        X0 = np.matrix([xc, yc]).T      # Initial values for unknown parameters
-        dX = np.ones(1)                 # Initial value for iteration
+    # Iteration process for adding distortion to the corrected x, y
+    for i in range(5):
+        # Solve unknown parameters
+        N = FuncN(X0[:, 0], X0[:, 1])
+        f = Funct(xcArr, ycArr, X0[:, 0], X0[:, 1])
+        f = np.dstack((f[0], f[1])).reshape(-1, 2, 1)
+        dX = np.sum(np.linalg.inv(N.T)*f, axis=1)
 
-        # Iteration process
-        c = 0       # Iteration count
-        while abs(dX.sum()) > 10**-3 and c < 5:
-            # Compute coefficient matrix and constants matrix
-            B = np.matrix(FuncJFx(*X0))
-            f = np.matrix(-FuncF(*tuple(np.append((xc, yc), X0))))
+        # Update initial values
+        X0 = dX + X0
 
-            # Solve the unknown parameters
-            N = B.T * B
-            t = B.T * f
-            dX = N.I * t
+    # Convert from (x, y) to (col, row), and swam these two columns
+    tmp = X0[:, 1].copy()
+    X0[:, 1] = (X0[:, 0] + IO['Fw']/2.) / IO['px']
+    X0[:, 0] = (IO['Fh']/2. - tmp) / IO['px']
 
-            X0 += dX            # Update initial values
-            c += 1
-
-        xp, yp = np.array(X0).ravel()
-
-        # From fiducial coordinate system to row and column
-        col = (xp + IO['Fw']/2.) / IO['px']
-        row = (IO['Fh']/2. - yp) / IO['px']
-
-        rowColArr[idx, :] = row, col
-        idx += 1
-
-        # Update the percentage of completion
-        if curValue < int(100.0 * idx / ptNum):
-            curValue = int(100.0 * idx / ptNum)
-            sys.stdout.write("\b" * 4)
-            sys.stdout.write("%3d%%" % curValue)
-            sys.stdout.flush()
-    sys.stdout.write("\n")
-
-    return rowColArr
+    return X0
 
 
 def main():
@@ -123,7 +98,7 @@ def main():
     # Compute corrected coordinates
     rowColArr = xy2RowCol(IO, x, y)
 
-    print rowColArr
+    print RowColArr
 
     return 0
 

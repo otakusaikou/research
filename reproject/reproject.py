@@ -92,7 +92,6 @@ def getxy(IO, EO, objPts):
 
 def extractColor(rowColArr, img):
     """Resample from input image, using bilinear interpolation."""
-    print "Resampling color from image..."
     ptNum = len(rowColArr)
     rgbArr = np.zeros((ptNum, 3))
 
@@ -146,10 +145,12 @@ def main():
     objPts = getPoint3d(ptFileName, IO, EO)
 
     # Reproject object points to image plane
+    print "Reprojecting object points..."
     x, y = getxy(IO, EO, objPts)
     rowColArr = xy2RowCol(IO, x, y)
 
     # Extract R, G, B color
+    print "Resampling color from image..."
     img = imread(imgFileName)
     RGB = extractColor(rowColArr, img)
     ptSet = np.concatenate(

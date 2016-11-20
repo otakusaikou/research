@@ -57,22 +57,32 @@ def getxy(IO, EO, objPts):
     return x, y
 
 
-def getInterpolation(img, x, y):
+def extractColor(rowColArr, img):
     """Resample from input image, using bilinear interpolation."""
-    # Get coordinates of nearest four points as well as ensuring the
-    # coordinates of four points are in the right image extent
-    if ((x < 0) or (x + 1 > img.shape[1] - 1)) or \
-            ((y < 0) or (y + 1 > img.shape[0] - 1)):
-        return np.zeros((3)) - 1
+    ptNum = len(rowColArr)
+    rgbArr = np.zeros((ptNum, 3))
 
-    x0, x1 = int(x), int(x + 1)
-    y0, y1 = int(y), int(y + 1)
+    # Get coordinates of nearest four points as well as ensuring the
+    # coordinates of four points are in the image extent
+    y, x = np.hsplit(rowColArr, 2)
+    mask = np.any([(x < 0), (x + 1 > img.shape[1] - 1),
+                   (y < 0), (y + 1 > img.shape[0] - 1)], axis=0).ravel()
+    rgbArr[mask, :] -= 1        # Mark the outside points as -1
+
+    # Four corner points
+    x0 = x[~mask].astype(int)
+    x1 = x0 + 1
+    y0 = y[~mask].astype(int)
+    y1 = y0 + 1
+
+    x = x[~mask]
+    y = y[~mask]
 
     # Get intensity of nearest four points
-    Ia = img[y0, x0]  # Upper left corner
-    Ib = img[y1, x0]  # Lower left corner
-    Ic = img[y0, x1]  # Upper right corner
-    Id = img[y1, x1]  # Lower right corner
+    Ia = img[y0.ravel(), x0.ravel()]  # Upper left corner
+    Ib = img[y1.ravel(), x0.ravel()]  # Lower left corner
+    Ic = img[y0.ravel(), x1.ravel()]  # Upper right corner
+    Id = img[y1.ravel(), x1.ravel()]  # Lower right corner
 
     # Compute the weight of four points
     wa = (x1-x) * (y1-y)
@@ -80,30 +90,9 @@ def getInterpolation(img, x, y):
     wc = (x-x0) * (y1-y)
     wd = (x-x0) * (y-y0)
 
-    return wa*Ia + wb*Ib + wc*Ic + wd*Id
+    rgbArr[~mask, :] = wa*Ia + wb*Ib + wc*Ic + wd*Id
 
-
-def extractColor(rowColArr, img):
-    """Extract color from image."""
-    idx = 0
-    curValue = 0    # Current percentage of completion
-    ptNum = len(rowColArr)
-    rgbArr = np.zeros((ptNum, 3))
-    sys.stdout.write("Color interpolation process: %3d%%" % 0)
-
-    for row in rowColArr:
-        rgbArr[idx, :] = getInterpolation(img, row[1], row[0])
-        idx += 1
-
-        # Update the percentage of completion
-        if curValue < int(100.0 * idx / ptNum):
-            curValue = int(100.0 * idx / ptNum)
-            sys.stdout.write("\b" * 4)
-            sys.stdout.write("%3d%%" % curValue)
-            sys.stdout.flush()
-    sys.stdout.write("\n")
-
-    return rgbArr.astype(int)
+    return rgbArr
 
 
 def getPoint3d(conn, IO, EO):
@@ -224,10 +213,12 @@ def main():
     objPts = getPoint3d(conn, IO, EO)
 
     # Reproject object points to image plane
+    print "Reprojecting object points..."
     x, y = getxy(IO, EO, objPts)
     rowColArr = xy2RowCol(IO, x, y)
 
     # Extract R, G, B color
+    print "Resampling color from image..."
     img = imread(imgFileName)
     RGB = extractColor(rowColArr, img)
     ptSet = np.concatenate((
@@ -242,6 +233,7 @@ def main():
     del objPts, x, y, img, RGB, rowColArr
     gc.collect()
 
+    print "Updating point cloud database..."
     updateDB(conn, ptSet, EO, imgFileName)
     conn.close()
 

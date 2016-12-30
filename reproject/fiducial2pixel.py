@@ -74,7 +74,7 @@ def xy2RowCol(IO, xcArr, ycArr):
         # Update initial values
         X0 = dX + X0
 
-    # Convert from (x, y) to (col, row), and swam these two columns
+    # Convert from (x, y) to (col, row), and swap these two columns
     tmp = X0[:, 1].copy()
     X0[:, 1] = (X0[:, 0] + IO['Fw']/2.) / IO['px']
     X0[:, 0] = (IO['Fh']/2. - tmp) / IO['px']

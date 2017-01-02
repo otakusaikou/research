@@ -2,91 +2,99 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.insert(0, "../SIFTMatching")
-sys.path.insert(0, "../measureCP")
-import numpy as np
-from measureCP import getIO
-from pixel2fiducial import allDist
-from scipy import spatial
 from SIFTMatching import match
-
-
-def getTree(data, sf):
-    """Initialize the point cloud KD-tree."""
-    X = -data["Y"]  # Use the Y coordinates as image column
-    Y = -data["Z"]  # Use the Z coordinates as image row
-
-    # Get image resolution
-    width = int((X.max() - X.min()) * sf)
-    height = int((Y.max() - Y.min()) * sf)
-
-    # Generate grid points
-    rangeX = np.linspace(X.min(), X.max(), num=width)
-    rangeY = np.linspace(Y.min(), Y.max(), num=height)
-
-    # Create KD tree for point query
-    tree = spatial.cKDTree(zip(X, Y))
-
-    return tree, rangeX, rangeY
+sys.path.insert(0, "../measureCP")
+from pixel2fiducial import allDist
+from measureCP import getIO
+sys.path.insert(0, "../reproject")
+from reproject import getxy
+from reproject import xy2RowCol
+import numpy as np
+from scipy.misc import imread
+import pandas as pd
+from scipy import spatial
 
 
 def main():
     # Define input file names
-    LiDARFileName = '../ptCloud/P1_L.txt'
+    EOFileName = '../param/EO_P1_L.txt'
     IOFileName = '../param/IO.txt'
-    sf = 100     # Scale factor for LiDAR image
-    LiDARImgFileName = '../images/P1_L_RGB100.png'
-    photoName = '../images/P2_L.jpg'
+    ptFileName = '../ptCloud/P1_L.txt'
+    imgFileName = '../images/P1_C.jpg'
     outputFileName = 'result.txt'
 
     # SIFT matching parameters
     ratio = 0.8
     showResult = True
 
-    # Read LiDAR points information
-    data = np.genfromtxt(
-        LiDARFileName,
-        dtype=[('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')],
-        skip_header=1,
-        usecols=(0, 1, 2))
+    # Use n nearest neighbor point value for image interpolation
+    n = 4
 
-    # Read interior orientation parameter
+    # Read point cloud information
+    data = pd.read_csv(ptFileName, header=0, delim_whitespace=True)
+
+    # Read interior/exterior orientation parameters
     IO = getIO(IOFileName)
 
-    # Get the KD-tree object and grid point coordinates
-    tree, rangeX, rangeY = getTree(data, sf)
+    # XL, YL, ZL, O, P, K, SigXL, SigYL, SigZL, SigO, SigP, SigK
+    EO = np.genfromtxt(EOFileName)
+
+    # Reproject the object point to reference image plane
+    x, y = getxy(IO, EO, data)
+    rowColArr = xy2RowCol(IO, x, y)
+
+    # Create KD-tree object with projected point coordinate (col, row)
+    tree = spatial.cKDTree(np.roll(rowColArr, 1, axis=1))
+
+    # Generate a false image for matching process between
+    # object and image points
+    targetImg = imread(imgFileName)
+    height, width = targetImg.shape[:2]
+    xi, yi = np.meshgrid(np.arange(width), np.arange(height))
+    pts = np.dstack((xi.ravel(), yi.ravel())).reshape(-1, 2)
+
+    distance, location = tree.query(
+        pts, k=n, distance_upper_bound=1.5)
+    mask = np.sum(~np.isinf(distance), axis=1) != 0
+
+    valR = data.R[location[mask].ravel()].reshape(-1, n)
+    valR[np.isnan(valR)] = 0
+    valG = data.G[location[mask].ravel()].reshape(-1, n)
+    valG[np.isnan(valG)] = 0
+    valB = data.B[location[mask].ravel()].reshape(-1, n)
+    valB[np.isnan(valB)] = 0
+    weight = 1.0 / distance[mask]
+
+    falseImg = np.zeros((1280, 1920, 3), dtype=np.uint8)
+    falseImg[mask.reshape(xi.shape), 0] = np.sum(valR * weight, axis=1) / \
+        np.sum(weight, axis=1)
+    falseImg[mask.reshape(xi.shape), 1] = np.sum(valG * weight, axis=1) / \
+        np.sum(weight, axis=1)
+    falseImg[mask.reshape(xi.shape), 2] = np.sum(valB * weight, axis=1) / \
+        np.sum(weight, axis=1)
 
     # Perform SIFT matching with LiDAR image and photo
-    LiDARPt, photoPt = map(lambda x: x.reshape(-1, 2), match(
-        LiDARImgFileName,
-        photoName,
+    falseImgPt, imgPt = map(lambda x: x.reshape(-1, 2), match(
+        falseImg,
+        targetImg,
         ratio,
         show=showResult))
 
-    LiDARPt = LiDARPt.astype(int)
+    # Query 3D coordinates with nearest false image points
+    dis, loc = tree.query(falseImgPt, k=1)
+    imgPt = np.dstack((allDist(imgPt[:, 1], imgPt[:, 0], IO))).reshape(-1, 2)
+    objPt = data[['X', 'Y', 'Z']].values[loc]
 
-    # Generate observation file for space resection
-    ptSet = []
-    for i in range(LiDARPt.shape[0]):
-        # Search the index of object point
-        dis, loc = tree.query(
-            [rangeX[LiDARPt[i, 0]], rangeY[LiDARPt[i, 1]]],
-            k=1, distance_upper_bound=0.01)
-
-        # The case where the object point can be found
-        if loc < len(data):
-            imgPt = allDist(photoPt[i, 1], photoPt[i, 0], IO)
-            objPt = (data['X'][loc], data['Y'][loc], data['Z'][loc])
-            ptSet.append(imgPt + objPt)
-
-    ptSet = np.array(ptSet)
+    ptSet = np.concatenate((imgPt, objPt), axis=1)
 
     # Write out the result
     np.savetxt(
         outputFileName,
-        ptSet,
+        pd.DataFrame(ptSet).drop_duplicates().values,
         fmt="Pt %.6f %.6f %.6f %.6f %.6f" + " 0.005" * 3,
         header=str(IO['f']),
         comments='')
+
 
 if __name__ == '__main__':
     main()

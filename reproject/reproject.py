@@ -157,14 +157,15 @@ def main():
         (objPts[['X', 'Y', 'Z']].view(np.double).reshape(-1, 3), RGB), axis=1)
 
     # Keep the points whose color are not equal to black
-    ptSet = ptSet[RGB.sum(axis=1) != -3].view()
+    ptSet = np.concatenate((ptSet[RGB.sum(axis=1) != -3],
+                           rowColArr[RGB.sum(axis=1) != -3]), axis=1)
 
     # Write out the result
     np.savetxt(
         outputPtFileName,
         ptSet,
-        fmt="%.6f %.6f %.6f %d %d %d",
-        header="X Y Z R G B",
+        fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
+        header="X Y Z R G B row col",
         comments='')
 
 

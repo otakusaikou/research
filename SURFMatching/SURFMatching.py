@@ -6,19 +6,11 @@ import numpy as np
 import sys
 
 
-def match(fileName1, fileName2, ratio, show=False):
+def match(leftImg, rightImg, ratio, show=False):
     """SURF matching with opencv.
 
     Reference : http://goo.gl/dhnm8n
     """
-    # Read image
-    leftImg = cv2.imread(fileName1)
-    rightImg = cv2.imread(fileName2)
-
-    # Convert image from bgr to rgb
-    leftImgRGB = cv2.cvtColor(leftImg, cv2.COLOR_BGR2RGB)
-    rightImgRGB = cv2.cvtColor(rightImg, cv2.COLOR_BGR2RGB)
-
     # Convert image to gray scale
     leftGray = cv2.cvtColor(leftImg, cv2.COLOR_BGR2GRAY)
     rightGray = cv2.cvtColor(rightImg, cv2.COLOR_BGR2GRAY)
@@ -58,7 +50,7 @@ def match(fileName1, fileName2, ratio, show=False):
                            flags = 2)
 
         matchImg = cv2.drawMatches(
-            leftImgRGB, kp1, rightImgRGB, kp2, good, None, **draw_params)
+            leftImg, kp1, rightImg, kp2, good, None, **draw_params)
 
         plt.imshow(matchImg, "gray")
         plt.show()
@@ -66,13 +58,21 @@ def match(fileName1, fileName2, ratio, show=False):
 
 def main():
     if len(sys.argv) != 1:
-        match(sys.argv[-2], sys.argv[-1], 0.8, show=True)
+        fileName1 = sys.argv[-2]
+        fileName2 = sys.argv[-1]
     else:
-        match(
-            "../images/Intensity50_trim.png",
-            "../images/RGB_trim.png",
-            0.75,
-            show=True)
+        fileName1 = "../images/P1_L.jpg"
+        fileName2 = "../images/P1_C.jpg"
+
+    # Read image
+    leftImg = cv2.imread(fileName1)
+    rightImg = cv2.imread(fileName2)
+
+    # Convert image from bgr to rgb
+    leftImgRGB = cv2.cvtColor(leftImg, cv2.COLOR_BGR2RGB)
+    rightImgRGB = cv2.cvtColor(rightImg, cv2.COLOR_BGR2RGB)
+
+    match(leftImgRGB, rightImgRGB, 0.8, show=True)
 
     return 0
 

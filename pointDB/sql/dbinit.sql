@@ -8,6 +8,7 @@ CREATE TABLE public.point3d
   x float8,
   y float8,
   z float8,
+  I integer,
   CONSTRAINT POINT3DPK PRIMARY KEY (id)
 );
 

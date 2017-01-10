@@ -29,41 +29,26 @@ CREATE TABLE public.image
   CONSTRAINT IMAGEPK PRIMARY KEY (id)
 );
 
---Create sequence for table 'point2d'
-CREATE SEQUENCE public.point2d_id_seq START 1;
+--Create sequence for table 'colorinfo'
+CREATE SEQUENCE public.colorinfo_id_seq START 1;
 
 /*
-Create table 'point2d', primary key is 'id'
-Foreign key is image_no, referenced from image(id)*/
-CREATE TABLE public.point2d
-(
-  id integer NOT NULL DEFAULT nextval('point2d_id_seq'::regclass),
-  row float8,
-  col float8,
-  image_no integer,
-  CONSTRAINT POINT2DPK PRIMARY KEY (id),
-  CONSTRAINT POINT2DFK_IMAGE
-    FOREIGN KEY (image_no) REFERENCES image(id)
-);
-
---Create sequence for table 'color'
-CREATE SEQUENCE public.color_id_seq START 1;
-
-/*
-Create table 'color', primary key is 'id'
+Create table 'colorinfo', primary key is 'id'
 Foreign keys are point3d_no, referenced from point3d(id)
-                 point2d_no, referenced from point2d(id)*/
-CREATE TABLE public.color
+                 image_no, referenced from image(id)*/
+CREATE TABLE public.colorinfo
 (
-  id integer NOT NULL DEFAULT nextval('color_id_seq'::regclass),
+  id integer NOT NULL DEFAULT nextval('colorinfo_id_seq'::regclass),
   r integer,
   g integer,
   b integer,
+  row float8,
+  col float8,
   point3d_no integer,
-  point2d_no integer,
-  CONSTRAINT COLORPK PRIMARY KEY (id),
-  CONSTRAINT COLORFK_POINT3D
+  image_no integer,
+  CONSTRAINT COLORINFOPK PRIMARY KEY (id),
+  CONSTRAINT COLORINFOFK_POINT3D
     FOREIGN KEY (point3d_no) REFERENCES point3d(id),
-  CONSTRAINT COLORFK_POINT2D
-    FOREIGN KEY (point2d_no) REFERENCES point2d(id)
+  CONSTRAINT COLORINFOFK_IMAGE
+    FOREIGN KEY (image_no) REFERENCES image(id)
 );

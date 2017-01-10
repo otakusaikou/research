@@ -8,6 +8,13 @@ import psycopg2
 def initDB(host, port, user, dbName):
     """Initialize point cloud database."""
     # Replace the old database and create a new one
+    print "Kill existing session..."
+    with open('sql/killsession.sql') as fin:
+        sql = fin.read() % dbName
+        cmdStr = "psql -h %s -p %s -U %s -c \"%s\"" \
+            % (host, port, user, sql)
+    os.popen(cmdStr)
+
     print "Initialize point cloud database..."
     cmdStr = "psql -h %s -p %s -U %s -c \"DROP DATABASE IF EXISTS %s;\"" \
         % (host, port, user, dbName)

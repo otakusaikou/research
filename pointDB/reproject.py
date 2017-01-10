@@ -7,15 +7,57 @@ from pixel2fiducial import allDist
 sys.path.insert(0, "../reproject")
 from fiducial2pixel import getIO
 from fiducial2pixel import xy2RowCol
-import gc
+import hashlib
 import numpy as np
 from numpy import cos
 from numpy import sin
+import os
 import psycopg2
 from scipy.misc import imread
+import time
 
 
 np.set_printoptions(suppress=True)  # Disable scientific notation for numpy
+
+
+def getPoint3d(conn, IO, EO):
+    """Get the 3d point within the photo scene."""
+    cur = conn.cursor()     # Get cursor object of database connection
+
+    # Acquire the average depth of field
+    cur.execute("SELECT AVG(X)\nFROM point3d;")
+    XA = cur.fetchone()[0]
+
+    # Compute the four corner coordinates of image (col, row)
+    width, height = round(IO['Fw'] / IO['px']), round(IO['Fh'] / IO['px'])
+    cnrPt = np.array([(0, 0), (width, 0), (width, height), (0, height)])
+
+    # Compute corrected coordinates under the fiducial axis coordinate system
+    xc, yc = allDist(cnrPt[:, 1], cnrPt[:, 0], IO)
+
+    f = IO['f']
+    XL, YL, ZL = EO[:3]
+    Omega, Phi, Kappa = map(np.radians, EO[3:6])
+    M = getM(Omega, Phi, Kappa)
+
+    # Compute the image extent in the object space
+    a = -(xc * M[2, 0] + f * M[0, 0]) / (xc * M[2, 1] + f * M[0, 1])
+    b = -(xc * M[2, 2] + f * M[0, 2]) / (xc * M[2, 1] + f * M[0, 1])
+    c = -(yc * M[2, 0] + f * M[1, 0]) / (yc * M[2, 2] + f * M[1, 2])
+    d = -(yc * M[2, 1] + f * M[1, 1]) / (yc * M[2, 2] + f * M[1, 2])
+    YA = ((a + b * c) / (1 - b * d)) * (XA - XL) + YL
+    ZA = ((c + a * d) / (1 - b * d)) * (XA - XL) + ZL
+
+    # Acquire the 3d point within the photo scene
+    sql = """
+SELECT id, x, y, z
+FROM point3d
+WHERE Y < %s and Y > %s and Z < %s and Z > %s;"""
+    cur.execute(sql, (YA.max(), YA.min(), ZA.max(), ZA.min()))
+    objPts = np.array(cur.fetchall(), dtype=[
+        ('id', 'i8'), ('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')])
+
+    return objPts
 
 
 def getM(Omega, Phi, Kappa):
@@ -95,55 +137,21 @@ def extractColor(rowColArr, img):
     return rgbArr
 
 
-def getPoint3d(conn, IO, EO):
-    """Get the 3d point within the photo scene."""
-    cur = conn.cursor()     # Get cursor object of database connection
-
-    # Acquire the average depth of field
-    sql = "SELECT AVG(X)\nFROM point3d;"
-    cur.execute(sql)
-    XA = cur.fetchone()[0]
-
-    # Compute the four corner coordinates of image (col, row)
-    width, height = round(IO['Fw'] / IO['px']), round(IO['Fh'] / IO['px'])
-    cnrPt = np.array([(0, 0), (width, 0), (width, height), (0, height)])
-
-    # Compute corrected coordinates under the fiducial axis coordinate system
-    xc, yc = allDist(cnrPt[:, 1], cnrPt[:, 0], IO)
-
-    f = IO['f']
-    XL, YL, ZL = EO[:3]
-    Omega, Phi, Kappa = map(np.radians, EO[3:6])
-    M = getM(Omega, Phi, Kappa)
-
-    # Compute the image extent in the object space
-    a = -(xc * M[2, 0] + f * M[0, 0]) / (xc * M[2, 1] + f * M[0, 1])
-    b = -(xc * M[2, 2] + f * M[0, 2]) / (xc * M[2, 1] + f * M[0, 1])
-    c = -(yc * M[2, 0] + f * M[1, 0]) / (yc * M[2, 2] + f * M[1, 2])
-    d = -(yc * M[2, 1] + f * M[1, 1]) / (yc * M[2, 2] + f * M[1, 2])
-    YA = ((a + b * c) / (1 - b * d)) * (XA - XL) + YL
-    ZA = ((c + a * d) / (1 - b * d)) * (XA - XL) + ZL
-
-    # Acquire the 3d point within the photo scene
+def getImgID(conn, imgName):
+    """Get the current image ID from database."""
     sql = """
-SELECT *
-FROM point3d
-WHERE Y < %s and Y > %s and Z < %s and Z > %s;"""
-    cur.execute(sql, (YA.max(), YA.min(), ZA.max(), ZA.min()))
-    objPts = np.array(cur.fetchall(), dtype=[
-        ('id', 'i8'), ('X', 'f8'), ('Y', 'f8'), ('Z', 'f8')])
+SELECT id FROM image
+WHERE position(%s in name) != 0;"""
+    cur = conn.cursor()     # Get cursor object of database connection
+    cur.execute(sql, (imgName, ))
+    imgID = cur.fetchone()[0]
 
-    # Free the memory
-    del sql, cur
-    gc.collect()
-
-    return objPts
+    return imgID
 
 
 def updateDB(conn, ptSet, EO, imgName):
     """Update the point cloud database."""
     cur = conn.cursor()     # Get cursor object of database connection
-    numPt = len(ptSet)      # Number of point
 
     # For image table
     sql = """
@@ -151,36 +159,34 @@ INSERT INTO image (id, name, omega, phi, kappa, xl, yl, zl) VALUES
 ((nextval('image_id_seq'::regclass)), '%s'""" % imgName + ", %.8f" * 6 + ");\n"
 
     sql = sql % (tuple(EO[3:6]) + tuple(EO[:3]))
-
-    # For point2d table
-    sql += "INSERT INTO point2d (id, row, col, image_no) VALUES\n"
-    for i in range(numPt - 1):
-        sql += "((nextval('point2d_id_seq'::regclass)), "
-        sql += "%.8f, %.8f, " % tuple(ptSet[i, -2:])
-        sql += "(currval('image_id_seq'::regclass))),\n"
-
-    sql += "((nextval('point2d_id_seq'::regclass)), "
-    sql += "%.8f, %.8f, " % tuple(ptSet[-1, -2:])
-    sql += "(currval('image_id_seq'::regclass)));\n"
-
-    # For color table
-    sql += "INSERT INTO color (id, r, g, b, point3d_no, point2d_no) VALUES\n"
-    for i in range(0, numPt - 1):
-        sql += "((nextval('color_id_seq'::regclass)), %d, %d, %d, %d, " % \
-            (tuple(ptSet[i, 4:7]) + tuple([ptSet[i, 0]]))
-        sql += "(currval('point2d_id_seq'::regclass) - %d)),\n" % \
-            (numPt - (i + 1))
-
-    sql += "((nextval('color_id_seq'::regclass)), %d, %d, %d, %d, " % \
-        (tuple(ptSet[-1, 4:7]) + tuple([ptSet[-1, 0]]))
-    sql += "(currval('point2d_id_seq'::regclass)));\n"
-
     cur.execute(sql)
     conn.commit()
 
-    # Free the memory
-    del sql, cur
-    gc.collect()
+    # Add image id column to ptSet array
+    imgIDCol = np.zeros((len(ptSet), 1)) + getImgID(conn, imgName)
+    ptSet = np.concatenate((ptSet, imgIDCol), axis=1)
+
+    # Write out the result to temporary file
+    h = hashlib.sha1()
+    h.update(str(time.time()))
+    outputPtFileName = os.path.abspath(h.hexdigest()[:10])
+
+    np.savetxt(
+        outputPtFileName,
+        ptSet,
+        fmt="%d %d %d %.6f %.6f %d %d",
+        header="R G B row col point3d_no image_no",
+        comments='')
+
+    # For colorinfo table
+    sql = """
+COPY colorinfo(r, g, b, row, col, point3d_no, image_no)
+FROM %s DELIMITER \' \' CSV HEADER;"""
+    cur.execute(sql, (outputPtFileName, ))
+    conn.commit()
+
+    # Remove temporary file
+    os.remove(outputPtFileName)
 
 
 def main():
@@ -192,8 +198,8 @@ def main():
 
     # Define file names
     IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P3_L_more.txt'
-    imgFileName = '../images/P3_L.jpg'
+    EOFileName = '../param/EO_P1_C.txt'
+    imgFileName = '../images/P1_C.jpg'
 
     IO = getIO(IOFileName)
 
@@ -221,17 +227,13 @@ def main():
     print "Resampling color from image..."
     img = imread(imgFileName)
     RGB = extractColor(rowColArr, img)
+
+    # Use the same order as the 'colorinfo' table
     ptSet = np.concatenate((
-        objPts['id'].reshape(-1, 1),
-        objPts[['X', 'Y', 'Z']].view(np.double).reshape(-1, 3),
-        RGB, rowColArr), axis=1)
+        RGB, rowColArr, objPts['id'].reshape(-1, 1)), axis=1)
 
     # Keep the points whose color are not equal to black
     ptSet = ptSet[RGB.sum(axis=1) != -3].view()
-
-    # Free the memory
-    del objPts, x, y, img, RGB, rowColArr
-    gc.collect()
 
     print "Updating point cloud database..."
     updateDB(conn, ptSet, EO, imgFileName)

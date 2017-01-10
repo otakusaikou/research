@@ -14,6 +14,11 @@ def export(conn, imgFileNameList, outputPtFileNameList):
             cur.execute(sql.read(), (imgFileNameList[i], ))
         ptSet = np.array(cur.fetchall())
 
+        # Check if the data is empty array
+        if not ptSet.size:
+            print "Cannot found any data from image '%s'" % imgFileNameList[i]
+            continue
+
         # Output the result
         np.savetxt(
             outputPtFileNameList[i],
@@ -32,10 +37,22 @@ def main():
 
     # Define file names
     imgFileNameList = [
-        'P1_L.jpg', 'P1_C.jpg', 'P1_R.jpg', 'P2_L.jpg', 'P2_C.jpg', 'P2_R.jpg', 'P3_L.jpg']
+        'P1_L.jpg',
+        'P1_C.jpg',
+        'P1_R.jpg',
+        'P2_L.jpg',
+        'P2_C.jpg',
+        'P2_R.jpg',
+        'P3_L.jpg']
+
     outputPtFileNameList = [
-        '../ptCloud/P1_L.txt', '../ptCloud/P1_C.txt', '../ptCloud/P1_R.txt', '../ptCloud/P2_L.txt',
-        '../ptCloud/P2_C.txt','../ptCloud/P2_R.txt', '../ptCloud/P3_L.txt']
+        '../ptCloud/P1_L.txt',
+        '../ptCloud/P1_C.txt',
+        '../ptCloud/P1_R.txt',
+        '../ptCloud/P2_L.txt',
+        '../ptCloud/P2_C.txt',
+        '../ptCloud/P2_R.txt',
+        '../ptCloud/P3_L.txt']
 
     # Connect to database
     try:

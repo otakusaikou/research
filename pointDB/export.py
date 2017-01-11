@@ -3,29 +3,29 @@
 """This module can export point cloud from database with given image name."""
 import numpy as np
 import psycopg2
+import sys
 
 
-def export(conn, imgFileNameList, outputPtFileNameList):
+def export(conn, imgFileName, outputPtFileName):
     """Export the point cloud from database in batches."""
     cur = conn.cursor()     # Get cursor object of database connection
-    for i in range(len(imgFileNameList)):
-        print "Exporting point cloud from '%s'..." % imgFileNameList[i]
-        with open('sql/queryByImage.sql') as sql:
-            cur.execute(sql.read(), (imgFileNameList[i], ))
-        ptSet = np.array(cur.fetchall())
+    print "Exporting point cloud from '%s'..." % imgFileName
+    with open('sql/queryByImage.sql') as sql:
+        cur.execute(sql.read(), (imgFileName, ))
+    ptSet = np.array(cur.fetchall())
 
-        # Check if the data is empty array
-        if not ptSet.size:
-            print "Cannot found any data from image '%s'" % imgFileNameList[i]
-            continue
+    # Check if the data is empty array
+    if not ptSet.size:
+        print "Cannot found any data from image '%s'" % imgFileName
+        return
 
-        # Output the result
-        np.savetxt(
-            outputPtFileNameList[i],
-            ptSet,
-            fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
-            header="X Y Z R G B row col",
-            comments='')
+    # Output the result
+    np.savetxt(
+        outputPtFileName,
+        ptSet,
+        fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
+        header="X Y Z R G B row col",
+        comments='')
 
 
 def main():
@@ -35,24 +35,22 @@ def main():
     dbName = 'pointdb'
     user = 'postgres'
 
-    # Define file names
-    imgFileNameList = [
-        'P1_L.jpg',
-        'P1_C.jpg',
-        'P1_R.jpg',
-        'P2_L.jpg',
-        'P2_C.jpg',
-        'P2_R.jpg',
-        'P3_L.jpg']
-
-    outputPtFileNameList = [
-        '../ptCloud/P1_L.txt',
-        '../ptCloud/P1_C.txt',
-        '../ptCloud/P1_R.txt',
-        '../ptCloud/P2_L.txt',
-        '../ptCloud/P2_C.txt',
-        '../ptCloud/P2_R.txt',
-        '../ptCloud/P3_L.txt']
+    # Parse user input if it has any
+    # You can use bath script to automate the update process
+    # e.g.
+    # ----with /bin/bash---- #
+    # for file in ../images/IMG* ../images/P*
+    # do
+    #     imgName=${file##*/}
+    #     echo ./export.py $imgName ./${imgName%.jpg}.txt
+    # done
+    #
+    if len(sys.argv) != 1:
+        imgFileName, outputPtFileName = sys.argv[1:]
+    else:
+        # Define file names
+        imgFileName = 'IMG_8694.jpg'
+        outputPtFileName = './IMG_8694.txt'
 
     # Connect to database
     try:
@@ -64,7 +62,7 @@ def main():
         return -1
 
     # Start batch processing
-    export(conn, imgFileNameList, outputPtFileNameList)
+    export(conn, imgFileName, outputPtFileName)
     conn.close()
 
 

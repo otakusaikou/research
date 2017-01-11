@@ -196,10 +196,25 @@ def main():
     dbName = 'pointdb'
     user = 'postgres'
 
-    # Define file names
-    IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P1_C.txt'
-    imgFileName = '../images/P1_C.jpg'
+    # Parse user input if it has any
+    # You can use bath script to automate the update process
+    # e.g.
+    # ----with /bin/bash---- #
+    # for file in ../param/EO*
+    # do
+    #     imgName=${file/param\/EO_/images\/}
+    #     ./reproject.py ../param/IO.txt $file ${imgName%.txt}.jpg
+    # done
+    #
+    if len(sys.argv) != 1:
+        IOFileName, EOFileName, imgFileName = sys.argv[1:]
+    else:
+        # Define file names
+        IOFileName = '../param/IO.txt'
+        EOFileName = '../param/EO_IMG_8694.txt'
+        imgFileName = '../images/IMG_8694.jpg'
+
+    print imgFileName
 
     IO = getIO(IOFileName)
 
@@ -236,6 +251,7 @@ def main():
     ptSet = ptSet[RGB.sum(axis=1) != -3].view()
 
     print "Updating point cloud database..."
+
     updateDB(conn, ptSet, EO, imgFileName)
     conn.close()
 

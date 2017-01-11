@@ -252,7 +252,7 @@ def main():
 
     print "Updating point cloud database..."
 
-    updateDB(conn, ptSet, EO, imgFileName)
+    updateDB(conn, ptSet, EO, os.path.split(imgFileName)[1])
     conn.close()
 
 

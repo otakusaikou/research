@@ -48,11 +48,11 @@ def genIntensityMap(inputFileName, outputFileName, sf, n=4):
         pts, k=n, distance_upper_bound=threshold)
     mask = np.sum(~np.isinf(distance), axis=1) != 0
 
-    valR = R[location[mask].ravel()].reshape(-1, n)
+    valR = R[location[mask].ravel()].values.reshape(-1, n)
     valR[np.isnan(valR)] = 0
-    valG = G[location[mask].ravel()].reshape(-1, n)
+    valG = G[location[mask].ravel()].values.reshape(-1, n)
     valG[np.isnan(valG)] = 0
-    valB = B[location[mask].ravel()].reshape(-1, n)
+    valB = B[location[mask].ravel()].values.reshape(-1, n)
     valB[np.isnan(valB)] = 0
     weight = 1.0 / distance[mask]
 

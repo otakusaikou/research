@@ -44,7 +44,7 @@ def genIntensityMap(inputFileName, outputFileName, sf, n=4):
         pts, k=n, distance_upper_bound=threshold)
     mask = np.sum(~np.isinf(distance), axis=1) != 0
 
-    values = I[location[mask].ravel()].reshape(-1, n)
+    values = I[location[mask].ravel()].values.reshape(-1, n)
     values[np.isnan(values)] = 0
     weight = 1.0 / distance[mask]
 
@@ -57,7 +57,7 @@ def genIntensityMap(inputFileName, outputFileName, sf, n=4):
 def main():
     sf = 100    # The scale factor of enlargement
     n = 4       # The number of nearest neighbors for kd-tree query
-    inputFileName = "../ptCloud/XYZRGBI.txt"
+    inputFileName = "../ptCloud/XYZ_edited_full.txt"
     outputFileName = "Intensity.png"
 
     genIntensityMap(inputFileName, outputFileName, sf, n)

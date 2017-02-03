@@ -22,7 +22,7 @@ def export(conn, imgFileName, outputPtFileName):
     # Output the result
     np.savetxt(
         outputPtFileName,
-        ptSet,
+        ptSet[:, 1:],
         fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
         header="X Y Z R G B row col",
         comments='')
@@ -61,7 +61,6 @@ def main():
         print "Unable to connect to the database."
         return -1
 
-    # Start batch processing
     export(conn, imgFileName, outputPtFileName)
     conn.close()
 

@@ -57,11 +57,11 @@ def main():
         pts, k=n, distance_upper_bound=1.5)
     mask = np.sum(~np.isinf(distance), axis=1) != 0
 
-    valR = data.R[location[mask].ravel()].reshape(-1, n)
+    valR = data.R[location[mask].ravel()].values.reshape(-1, n)
     valR[np.isnan(valR)] = 0
-    valG = data.G[location[mask].ravel()].reshape(-1, n)
+    valG = data.G[location[mask].ravel()].values.reshape(-1, n)
     valG[np.isnan(valG)] = 0
-    valB = data.B[location[mask].ravel()].reshape(-1, n)
+    valB = data.B[location[mask].ravel()].values.reshape(-1, n)
     valB[np.isnan(valB)] = 0
     weight = 1.0 / distance[mask]
 

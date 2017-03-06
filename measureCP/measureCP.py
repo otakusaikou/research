@@ -58,9 +58,10 @@ def measureProc(
 
     # Save the result
     with open(outputFileName, 'w') as fout:
+        fout.write("%.6f\n" % IO['f'])
         for pt in ptList:
             fout.write("Point%d" % (ptList.index(pt) + 1))
-            fout.write((" %.6f" * 7) % tuple(pt) + "\n")
+            fout.write((" %.6f" * 5) % tuple(pt[2:]) + "\n")
 
 
 def mousePress(event, tree, rangeX, rangeY, data, IO):
@@ -164,7 +165,7 @@ def main():
     intensityImg = imread('../images/Intensity100.png', 0)
     rgbImg = imread('../images/P1_L.jpg')
     outputFileName = 'result.txt'
-    LiDARFileName = '../ptCloud/XYZI.txt'
+    LiDARFileName = '../ptCloud/XYZ_edited_notree.txt'
     IOFileName = '../param/IO.txt'
     sf = 100     # Scale factor for LiDAR image
 

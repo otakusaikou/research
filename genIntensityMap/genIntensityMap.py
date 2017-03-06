@@ -57,8 +57,8 @@ def genIntensityMap(inputFileName, outputFileName, sf, n=4):
 def main():
     sf = 100    # The scale factor of enlargement
     n = 4       # The number of nearest neighbors for kd-tree query
-    inputFileName = "../ptCloud/XYZ_edited_full.txt"
-    outputFileName = "Intensity.png"
+    inputFileName = "../ptCloud/XYZ_edited_notree.txt"
+    outputFileName = "Intensity100.png"
 
     genIntensityMap(inputFileName, outputFileName, sf, n)
 

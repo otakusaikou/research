@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from pixel2fiducial import allDist
 from scipy.misc import imread
 from scipy import spatial
+
 
 
 def measureProc(
@@ -61,7 +63,7 @@ def measureProc(
         fout.write("%.6f\n" % IO['f'])
         for pt in ptList:
             fout.write("Point%d" % (ptList.index(pt) + 1))
-            fout.write((" %.6f" * 5) % tuple(pt[2:]) + "\n")
+            fout.write((" %.6f"*5 + " 0.005"*3) % tuple(pt[2:]) + "\n")
 
 
 def mousePress(event, tree, rangeX, rangeY, data, IO):

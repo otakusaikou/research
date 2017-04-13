@@ -2,10 +2,15 @@
 # Create a new cid list
 truncate cid_list.txt --size 0
 
-for file in ../param/EO*
+# The input filenames
+dataName=data1
+EOFilePath=../param/$dataName
+imgFilePath=../images/$dataName
+
+for file in $EOFilePath/*
 do
-    imgName=${file/param\/EO_/images\/}
-    ./occDetect.py $file ${imgName%.txt}.jpg
+    imgName=`echo $(basename $file .txt).jpg | sed 's/EO_//g'`
+    ./occDetect.py $file $imgFilePath/$imgName
 done
 
 # Create a temporary table for id of occluded point set

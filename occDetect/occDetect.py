@@ -4,7 +4,6 @@
 import glob
 import numpy as np
 import pandas as pd
-from scipy.cluster.vq import kmeans2
 from scipy import spatial
 
 
@@ -17,52 +16,51 @@ def occDetect(EOFileName, ptFileName, cleanedPtFileName, occlusionPtFileName):
     # XL, YL, ZL, O, P, K, SigXL, SigYL, SigZL, SigO, SigP, SigK
     EO = np.genfromtxt(EOFileName)
 
-    # Get the 3D edge points and build KD-tree with image coordinates
-    ptSet = pd.read_csv(ptFileName, delimiter=' ').values
-    X, Y, Z, R, G, B, row, col = np.hsplit(ptSet, 8)
-    tree = spatial.cKDTree(np.dstack((col, row)).reshape(-1, 2))
+    ptSet = pd.read_csv(ptFileName, delimiter=' ')
+    XYZ = ptSet[['X', 'Y', 'Z']].values
+
+    # Create the KD-tree
+    imgPt = ptSet[['row', 'col']].values
+    tree = spatial.cKDTree(imgPt)
 
     # Get the candidate set of occluded points
-    k = 8
-    dis, idx = tree.query(
-        np.dstack((col, row)).reshape(-1, 2),
-        k=k+1)
+    k = 10
+    dis, idx = tree.query(imgPt, k=k+1, distance_upper_bound=1.5)
 
-    # Compute distance from exposure station to object points
-    disEO = np.hypot(
-        X[idx].reshape(-1, k+1) - EO[0],
-        Y[idx].reshape(-1, k+1) - EO[1],
-        Z[idx].reshape(-1, k+1) - EO[2])
+    # Threshold for second step of occlusion filtering
+    thresStd = 0.05
 
-    # First step of occlusion detection. In this step, we classify the
-    # candidate point sets with distance to camera. If the standard
-    # deviation is relatively big, then label these points as occluded area.
-    disStd = disEO.std(axis=1)
-    label1 = kmeans2(disStd*10, np.array([0, 5]), 2)[1]     # Use centmeter
-    occSet = disEO[label1 == 1]
-    occSetIdx = idx[label1 == 1]    # Index of occluded point sets
+    # Number of point which are within the distance upper bound
+    num = k + 1 - np.isinf(dis).sum(axis=1)
 
-    # Second step of occlusion detection. We normalize the labeled distances
-    # firstly, then classify these point set again. Points with higher index
-    # value will be labeled as occluded object points.
-    occSetStd = occSet.std(axis=1)
-    outSetMin = occSet.min(axis=1)
+    # Difference in three component between the camera and object point
+    dX, dY, dZ = np.hsplit(XYZ - EO[:3], 3)
 
-    # Normalized Index = (D_i - min(D_i) / std(D_i))
-    NI = (occSet - outSetMin.reshape(-1, 1)) / occSetStd.reshape(-1, 1)
-    label2 = kmeans2(NI.ravel(), np.array([0, 1]), 2)[1]
-    idx = np.unique(occSetIdx.ravel()[label2 == 1])
-    mask = np.ones(len(ptSet), np.bool)
-    mask[idx] = 0
+    # Mask for the occluded object point
+    # The occluded points will be labeled as False
+    mask = np.zeros(len(ptSet), np.bool)
+
+    # Filter out the occluded points
+    mask[idx[num == 1, 0]] = True     # For point sets having only single point
+
+    # Point sets having more than one points
+    for n in range(2, k+2):
+        # Index for the current point and its n neighbors
+        nPtIdx = idx[num == n, :n].ravel()
+
+        # Distance to the camera
+        nDisEO = np.sqrt(
+            dX[nPtIdx]**2 + dY[nPtIdx]**2 + dZ[nPtIdx]**2).reshape(-1, n)
+
+        # Points having nearest object point equal to itself
+        isShortest = np.argmin(nDisEO, axis=1) == 0
+        mask[idx[num == n, 0][isShortest]] = True
+
+        # Point sets having small distance variation
+        smallStd = nDisEO[~isShortest].std(axis=1) < thresStd
+        mask[idx[num == n, 0][~isShortest][smallStd]] = True
 
     # Write out the results
-    np.savetxt(
-        occlusionPtFileName,
-        ptSet[~mask],
-        fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
-        header="X Y Z R G B row col",
-        comments='')
-
     np.savetxt(
         cleanedPtFileName,
         ptSet[mask],
@@ -70,10 +68,17 @@ def occDetect(EOFileName, ptFileName, cleanedPtFileName, occlusionPtFileName):
         header="X Y Z R G B row col",
         comments='')
 
+    np.savetxt(
+        occlusionPtFileName,
+        ptSet[~mask],
+        fmt="%.6f %.6f %.6f %d %d %d %.6f %.6f",
+        header="X Y Z R G B row col",
+        comments='')
+
 
 def main():
     # Define file names
-    EOFileList = glob.glob('../param/data1/*.txt')
+    EOFileList = glob.glob('../param/data2/EO_IMG_8713*')
     ptFileList = map(
         lambda f: f.replace("param", "ptCloud").replace("EO_", ""), EOFileList)
 

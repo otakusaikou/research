@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """Detect the occluded object points."""
+import glob
 import numpy as np
 import pandas as pd
 from scipy.cluster.vq import kmeans2
@@ -72,41 +73,15 @@ def occDetect(EOFileName, ptFileName, cleanedPtFileName, occlusionPtFileName):
 
 def main():
     # Define file names
-    EOFileList = [
-        '../param/EO_P1_L.txt',
-        '../param/EO_P1_C_more.txt',
-        '../param/EO_P1_R_more.txt',
-        '../param/EO_P2_L_less.txt',
-        '../param/EO_P2_C_more.txt',
-        '../param/EO_P2_R_more.txt',
-        '../param/EO_P3_L_more.txt']
+    EOFileList = glob.glob('../param/data1/*.txt')
+    ptFileList = map(
+        lambda f: f.replace("param", "ptCloud").replace("EO_", ""), EOFileList)
 
-    ptFileList = [
-        '../ptCloud/P1_L.txt',
-        '../ptCloud/P1_C.txt',
-        '../ptCloud/P1_R.txt',
-        '../ptCloud/P2_L.txt',
-        '../ptCloud/P2_C.txt',
-        '../ptCloud/P2_R.txt',
-        '../ptCloud/P3_L.txt']
+    cleanedPtFileList = map(
+        lambda f: f.replace("ptCloud/", "ptCloud/cleaned/"), ptFileList)
 
-    cleanedPtFileList = [
-        '../ptCloud/cleaned/P1_L_clean.txt',
-        '../ptCloud/cleaned/P1_C_clean.txt',
-        '../ptCloud/cleaned/P1_R_clean.txt',
-        '../ptCloud/cleaned/P2_L_clean.txt',
-        '../ptCloud/cleaned/P2_C_clean.txt',
-        '../ptCloud/cleaned/P2_R_clean.txt',
-        '../ptCloud/cleaned/P3_L_clean.txt']
-
-    occlusionPtFileList = [
-        '../ptCloud/occlusion/P1_L_occ.txt',
-        '../ptCloud/occlusion/P1_C_occ.txt',
-        '../ptCloud/occlusion/P1_R_occ.txt',
-        '../ptCloud/occlusion/P2_L_occ.txt',
-        '../ptCloud/occlusion/P2_C_occ.txt',
-        '../ptCloud/occlusion/P2_R_occ.txt',
-        '../ptCloud/occlusion/P3_L_occ.txt']
+    occlusionPtFileList = map(
+        lambda f: f.replace("cleaned", "occlusion"), cleanedPtFileList)
 
     for i in range(len(EOFileList)):
         occDetect(
@@ -114,6 +89,7 @@ def main():
             ptFileList[i],
             cleanedPtFileList[i],
             occlusionPtFileList[i])
+
 
 if __name__ == "__main__":
     main()

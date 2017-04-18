@@ -334,11 +334,7 @@ def main():
 
     # Check the max number of colors
     maxNum = getMaxImgNum(cur)
-    if maxNum < 3:
-        print "The max number of colors is lower than 3, ignore current task."
-        return -1
-    else:
-        print "Max number of colors: %d" % maxNum
+    print "Max number of colors: %d" % maxNum
 
     # Create temporary file for the merged color values
     with open('_tmpPtSet.txt', 'a') as fout:

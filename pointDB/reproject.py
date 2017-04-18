@@ -181,8 +181,9 @@ INSERT INTO image (id, name, omega, phi, kappa, xl, yl, zl) VALUES
     # For colorinfo table
     sql = """
 COPY colorinfo(r, g, b, row, col, point3d_no, image_no)
-FROM %s DELIMITER \' \' CSV HEADER;"""
-    cur.execute(sql, (outputPtFileName, ))
+FROM STDIN DELIMITER \' \' CSV HEADER;"""
+    with open(outputPtFileName) as fin:
+        cur.copy_expert(sql, fin)
     conn.commit()
 
     # Remove temporary file

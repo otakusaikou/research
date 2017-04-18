@@ -35,7 +35,7 @@ def main():
     user = 'postgres'
 
     # Define file names
-    ptFileName = os.path.abspath('../ptCloud/XYZ_edited_notree.txt')
+    ptFileName = os.path.abspath('../ptCloud/XYZ_edited_full_addPlane.txt')
 
     # Ask user whether to reinitialize the database
     flag = raw_input("Initialize database? (Y/N) ").lower()
@@ -54,7 +54,7 @@ def main():
 
     if flag in ['Y', 'y', 'Yes', 'yes']:
         cmdStr = ("psql -h %s -p %s -U %s -d %s -c " +
-                  "\"COPY point3d(X, Y, Z, I) FROM \'%s\' " +
+                  "\"\\COPY point3d(X, Y, Z, I) FROM \'%s\' " +
                   "DELIMITER \' \' CSV HEADER;\"") \
             % (host, port, user, dbName, ptFileName)
         os.popen(cmdStr)

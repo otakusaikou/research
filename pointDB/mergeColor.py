@@ -337,7 +337,7 @@ def main():
     print "Max number of colors: %d" % maxNum
 
     # Create temporary file for the merged color values
-    with open('_tmpPtSet.txt', 'a') as fout:
+    with open('_tmpPtSet.txt', 'w') as fout:
         fout.write("R G B ID\n")
 
     # Process ponints having a single color value
@@ -351,8 +351,9 @@ def main():
     # Update the merged color table
     sql = """
 COPY merged(r, g, b, id)
-FROM %s DELIMITER \' \' CSV HEADER;"""
-    cur.execute(sql, (os.path.abspath('_tmpPtSet.txt'), ))
+FROM STDIN DELIMITER \' \' CSV HEADER;"""
+    with open('_tmpPtSet.txt') as fin:
+        cur.copy_expert(sql, fin)
     conn.commit()
 
     # Remove temporary file and export the final result

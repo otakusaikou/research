@@ -56,18 +56,12 @@ HAVING COUNT(id) = 1;"""
     ptSet = np.array(cur.fetchall())
 
     # Update the merged result
-    np.savetxt(
-        '_tmpPtSet.txt',
-        ptSet,
-        fmt="%d %d %d %d",
-        header="R G B ID",
-        comments='')
-
-    sql = """
-COPY merged(r, g, b, id)
-FROM %s DELIMITER \' \' CSV HEADER;"""
-    cur.execute(sql, (os.path.abspath('_tmpPtSet.txt'), ))
-    conn.commit()
+    with open('_tmpPtSet.txt', 'a') as fout:
+        np.savetxt(
+            fout,
+            ptSet,
+            fmt="%d %d %d %d",
+            comments='')
 
 
 def creMulClr(cur, conn, n):
@@ -116,9 +110,10 @@ ORDER BY id ASC;"""
 def mergeClr(cur, conn, idStrList, imgNum):
     """Filter out the outliers and merge color value of inliers."""
     if imgNum == 2:
-        for idStr in idStrList:
-            sys.stdout.write("Processing image id: {%s}... %3d%%" %
-                             (",".join(idStr.split()), 0))
+        numIDSet = len(idStrList)   # Number of image id string set
+        for i, idStr in enumerate(idStrList):
+            sys.stdout.write("Processing image id: {%s}, (%d/%d)... %3d%%" %
+                             (",".join(idStr.split()), (i+1), numIDSet, 0))
             sys.stdout.flush()
 
             imgID1, imgID2 = map(int, idStr.split())
@@ -223,21 +218,16 @@ ORDER BY M.point3d_no ASC;"""
             sys.stdout.write("\n")
 
             # Update the merged result
-            np.savetxt(
-                '_tmpPtSet.txt',
-                ptSet,
-                fmt="%d %d %d %d",
-                header="R G B ID",
-                comments='')
-
-            sql = """
-COPY merged(r, g, b, id)
-FROM %s DELIMITER \' \' CSV HEADER;"""
-            cur.execute(sql, (os.path.abspath('_tmpPtSet.txt'), ))
-            conn.commit()
+            with open('_tmpPtSet.txt', 'a') as fout:
+                np.savetxt(
+                    fout,
+                    ptSet,
+                    fmt="%d %d %d %d",
+                    comments='')
 
     else:
-        for idStr in idStrList:
+        numIDSet = len(idStrList)   # Number of image id string set
+        for i, idStr in enumerate(idStrList):
             sql = """
 --Conbine the pointID-imageID table and it corresponding point id
 --and color values, also expand the id string to set of image id
@@ -258,14 +248,14 @@ GROUP BY point3d_no;"""
             numPt = len(ptIDColorSet)
 
             # Setup the progress value of current task
-            sys.stdout.write("Processing image id: {%s}... %3d%%" %
-                             (",".join(idStr.split()), 0))
+            sys.stdout.write("Processing image id: {%s}, (%d/%d)... %3d%%" %
+                             (",".join(idStr.split()), (i+1), numIDSet, 0))
             sys.stdout.flush()
 
             curVal = 0          # Current percentage of completion
-            for i in range(numPt):
+            for j in range(numPt):
                 # Compute and sum up the distance between each color values
-                colorArr = np.array(ptIDColorSet[i][:3]).astype(np.double).T
+                colorArr = np.array(ptIDColorSet[j][:3]).astype(np.double).T
                 disSum = spatial.distance.cdist(
                     colorArr, colorArr, 'sqeuclidean').sum(axis=1)
 
@@ -277,32 +267,26 @@ GROUP BY point3d_no;"""
                         disSum, np.array([disSum.min(), disSum.max()]), 2)[1]
 
                 inlier = np.where(label == 0)
-                ptSet[i, :3] = colorArr[inlier].mean(axis=0).astype(int)
+                ptSet[j, :3] = colorArr[inlier].mean(axis=0).astype(int)
 
                 # The point id
-                ptSet[i, 3] = ptIDColorSet[i][3]
+                ptSet[j, 3] = ptIDColorSet[j][3]
 
                 # Update the percentage of completion
-                if curVal < int(100.0 * (i+1) / numPt):
-                    curVal = int(100.0 * (i+1) / numPt)
+                if curVal < int(100.0 * (j+1) / numPt):
+                    curVal = int(100.0 * (j+1) / numPt)
                     sys.stdout.write("\b" * 4)
                     sys.stdout.write("%3d%%" % curVal)
                     sys.stdout.flush()
             sys.stdout.write("\n")
 
             # Update the merged result
-            np.savetxt(
-                '_tmpPtSet.txt',
-                ptSet,
-                fmt="%d %d %d %d",
-                header="R G B ID",
-                comments='')
-
-            sql = """
-COPY merged(r, g, b, id)
-FROM %s DELIMITER \' \' CSV HEADER;"""
-            cur.execute(sql, (os.path.abspath('_tmpPtSet.txt'), ))
-            conn.commit()
+            with open('_tmpPtSet.txt', 'a') as fout:
+                np.savetxt(
+                    fout,
+                    ptSet,
+                    fmt="%d %d %d %d",
+                    comments='')
 
 
 def exportTable(cur, outputPtFileName):
@@ -356,6 +340,10 @@ def main():
     else:
         print "Max number of colors: %d" % maxNum
 
+    # Create temporary file for the merged color values
+    with open('_tmpPtSet.txt', 'a') as fout:
+        fout.write("R G B ID\n")
+
     # Process ponints having a single color value
     addSngClr(cur, conn)
 
@@ -363,6 +351,13 @@ def main():
     for i in range(2, maxNum + 1):
         idStrList = creMulClr(cur, conn, i)
         mergeClr(cur, conn, idStrList, i)
+
+    # Update the merged color table
+    sql = """
+COPY merged(r, g, b, id)
+FROM %s DELIMITER \' \' CSV HEADER;"""
+    cur.execute(sql, (os.path.abspath('_tmpPtSet.txt'), ))
+    conn.commit()
 
     # Remove temporary file and export the final result
     os.remove('_tmpPtSet.txt')

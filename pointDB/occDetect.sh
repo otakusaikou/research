@@ -22,3 +22,6 @@ psql -h localhost -p 5432 -U postgres -d pointdb -c "\COPY tmpid(id) FROM '$(pwd
 # Delete rows from colorinfo table and then drop the temporary table
 psql -h localhost -p 5432 -U postgres -d pointdb -f sql/removeOcc.sql
 rm ./cid_list.txt
+
+# Garbage-collect and analyze the point cloud database
+vacuumdb -h localhost -p 5432 -U postgres -d pointdb -fz

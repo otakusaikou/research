@@ -17,7 +17,7 @@ def getStrtLine(imgFileName, cannyParam, houghParam, outputImg=False):
 
     # Detect lines
     isEdge = feature.canny(gray, *cannyParam)
-    lines = st.probabilistic_hough_line(edges, *houghParam)
+    lines = st.probabilistic_hough_line(isEdge, *houghParam)
 
     if outputImg:
         # For edge detection

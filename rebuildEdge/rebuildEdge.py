@@ -59,13 +59,13 @@ def getEdgeParam(Xs, Ys, Zs, X, Y, Z):
 
 def main():
     # Define file names
-    imgFileName = '../images/P1_L.jpg'
-    ptFileName = '../ptCloud/P1_L.txt'
-    oldLineFileName = '../ptCloud/oldLines_P1L.txt'
-    newLineFileName = '../ptCloud/newLines_P1L.txt'
+    imgFileName = '../images/data1/P3_L.jpg'
+    ptFileName = '../pointDB/original/P3_L.txt'
+    oldLineFileName = './addLine/oldLines_P3L.txt'
+    newLineFileName = './addLine/newLines_P3L.txt'
 
     # Define parameters for canny edge detector and hough transformation
-    cannySigma = 2          # Standard deviation of the Gaussian filter
+    cannySigma = 1          # Standard deviation of the Gaussian filter
     cannyLowThres = 10      # Lower bound for hysteresis thresholding
     cannyHighThres = 30     # Upper bound for hysteresis thresholding
     houghThres = 25         # Minimum number of intersections to detect a line
@@ -73,7 +73,7 @@ def main():
     houghLineGap = 1        # Maximum gap between pixels to still form a line
 
     # Threshold for adjustment of edge points
-    edgeThres = 0.003
+    edgeThres = 0.0025
 
     # Range tolerance
     threshold = 1.0
@@ -122,7 +122,7 @@ def main():
                 "%.6f %.6f %.6f %d %d %d\n" % tuple(ptSet[location[i], :-2]))
 
         # Generate new points
-        if len(location) > 5:
+        if len(location) > 10:
             # Get the start and end point coordinates
             startPt, endPt = getEndPt(
                 X[location], Y[location], Z[location],

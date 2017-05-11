@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from multiprocessing import cpu_count
+from multiprocessing import Pool
 import numpy as np
 import os
 import pandas as pd
@@ -226,67 +228,77 @@ ORDER BY M.point3d_no ASC;"""
                     comments='')
 
     else:
-        numIDSet = len(idStrList)   # Number of image id string set
-        for i, idStr in enumerate(idStrList):
-            sql = """
+        sql = """
 --Conbine the pointID-imageID table and it corresponding point id
 --and color values, also expand the id string to set of image id
 SELECT array_agg(C.r) r, array_agg(C.g) g, array_agg(C.b) b, point3d_no
 FROM colorinfo C JOIN (
     SELECT point3d_no, unnest(string_to_array(idstr, ' '))::integer image_no
-    FROM mulclr
-    WHERE idstr = %s) M USING (point3d_no, image_no)
+    FROM mulclr) M USING (point3d_no, image_no)
 GROUP BY point3d_no;"""
 
-            cur.execute(sql, (idStr,))
+        cur.execute(sql)
 
-            # R G B pointID
-            ptIDColorSet = cur.fetchall()
+        # R G B pointID
+        ptIDColorSet = cur.fetchall()
 
-            # R G B pointID
-            ptSet = np.zeros((len(ptIDColorSet), 4), dtype=np.int32)
-            numPt = len(ptIDColorSet)
+        # R G B pointID
+        ptSet = np.zeros((len(ptIDColorSet), 4), dtype=np.int32)
+        numPt = len(ptIDColorSet)
 
-            # Setup the progress value of current task
-            sys.stdout.write("Processing image id: {%s}, (%d/%d)... %3d%%" %
-                             (",".join(idStr.split()), (i+1), numIDSet, 0))
+        # Setup the progress value of current task
+        sys.stdout.write("Processing points have %d color values... %3d%%" %
+                         (imgNum, 0))
+        sys.stdout.flush()
+
+        curVal = [0]        # Current percentage of completion
+
+        # Prepare for the multiprocessing
+        global classifyClr
+
+        def classifyClr(j):
+            # Compute and sum up the distance between each color values
+            colorArr = np.array(ptIDColorSet[j][:3]).astype(np.double).T
+            disSum = spatial.distance.cdist(
+                colorArr, colorArr, 'sqeuclidean').sum(axis=1)
+
+            # Filter out the color values which are different to others
+            # Ignore the user warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                label = kmeans2(
+                    disSum, np.array([disSum.min(), disSum.max()]), 2)[1]
+
+            inlier = np.where(label == 0)
+
+            # Update the percentage of completion
+            if curVal[0] < int(100.0 * (j+1) / numPt):
+                curVal[0] = int(100.0 * (j+1) / numPt)
+                sys.stdout.write("\b" * 4)
+                sys.stdout.write("%3d%%" % curVal[0])
             sys.stdout.flush()
 
-            curVal = 0          # Current percentage of completion
-            for j in range(numPt):
-                # Compute and sum up the distance between each color values
-                colorArr = np.array(ptIDColorSet[j][:3]).astype(np.double).T
-                disSum = spatial.distance.cdist(
-                    colorArr, colorArr, 'sqeuclidean').sum(axis=1)
+            return colorArr[inlier].mean(axis=0).astype(int)
 
-                # Filter out the color values which are different to others
-                # Ignore the user warnings
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore')
-                    label = kmeans2(
-                        disSum, np.array([disSum.min(), disSum.max()]), 2)[1]
+        # Multi-image color filtering with multiprocessing method
+        pool = Pool(processes=cpu_count())
+        ptSet[:, :3] = pool.map(classifyClr, range(numPt))
+        pool.close()
 
-                inlier = np.where(label == 0)
-                ptSet[j, :3] = colorArr[inlier].mean(axis=0).astype(int)
+        sys.stdout.write("\b" * 4)
+        sys.stdout.write("%3d%%" % 100)
+        sys.stdout.write("\n")
 
-                # The point id
-                ptSet[j, 3] = ptIDColorSet[j][3]
+        # The point id
+        ptSet[:, 3] = np.array(ptIDColorSet)[:, 3]
 
-                # Update the percentage of completion
-                if curVal < int(100.0 * (j+1) / numPt):
-                    curVal = int(100.0 * (j+1) / numPt)
-                    sys.stdout.write("\b" * 4)
-                    sys.stdout.write("%3d%%" % curVal)
-                    sys.stdout.flush()
-            sys.stdout.write("\n")
-
-            # Update the merged result
-            with open('_tmpPtSet.txt', 'a') as fout:
-                np.savetxt(
-                    fout,
-                    ptSet,
-                    fmt="%d %d %d %d",
-                    comments='')
+        # Update the merged result
+        with open('_tmpPtSet.txt', 'a') as fout:
+            np.savetxt(
+                fout,
+                ptSet,
+                fmt="%d %d %d %d",
+                comments='')
 
 
 def exportTable(cur, outputPtFileName):

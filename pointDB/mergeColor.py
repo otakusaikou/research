@@ -138,7 +138,7 @@ FROM point3d P3D JOIN (
 
             # Get color information from the image pair
             sql = """
-SELECT C.r, C.g, C.b, C.row, C.col, M.point3d_no
+SELECT C.r, C.g, C.b, C.row, C.col
 FROM colorinfo C JOIN (
     SELECT point3d_no
     FROM mulclr

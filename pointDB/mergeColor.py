@@ -247,7 +247,7 @@ GROUP BY point3d_no;"""
         numPt = len(ptIDColorSet)
 
         # Setup the progress value of current task
-        sys.stdout.write("Processing points have %d color values... %3d%%" %
+        sys.stdout.write("Processing points having %d color values... %3d%%" %
                          (imgNum, 0))
         sys.stdout.flush()
 

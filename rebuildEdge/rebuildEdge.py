@@ -59,24 +59,33 @@ def getEdgeParam(Xs, Ys, Zs, X, Y, Z):
 
 def main():
     # Define file names
-    imgFileName = '../images/data1/P3_L.jpg'
-    ptFileName = '../pointDB/original/P3_L.txt'
-    oldLineFileName = './addLine/oldLines_P3L.txt'
-    newLineFileName = './addLine/newLines_P3L.txt'
+    imgFileName = '../images/data1/P1_R.jpg'
+    ptFileName = '../pointDB/addLineTest/P1_R.txt'
+    oldLineFileName = './addLine/oldLines_P1R.txt'
+    newLineFileName = './addLine/newLines_P1R.txt'
 
     # Define parameters for canny edge detector and hough transformation
-    cannySigma = 1          # Standard deviation of the Gaussian filter
-    cannyLowThres = 10      # Lower bound for hysteresis thresholding
+    cannySigma = 3          # Standard deviation of the Gaussian filter
+    cannyLowThres = 20      # Lower bound for hysteresis thresholding
     cannyHighThres = 30     # Upper bound for hysteresis thresholding
     houghThres = 25         # Minimum number of intersections to detect a line
     houghLineLength = 30    # Minimum accepted length of detected lines
     houghLineGap = 1        # Maximum gap between pixels to still form a line
 
     # Threshold for adjustment of edge points
-    edgeThres = 0.0025
+    edgeThres = 0.003
+
+    # Output the parameter settings
+    print "cannySigma: %d" % cannySigma
+    print "cannyLowThres: %d" % cannyLowThres
+    print "cannyHighThres: %d" % cannyHighThres
+    print "houghThres: %d" % houghThres
+    print "houghLineLength: %d" % houghLineLength
+    print "houghLineGap: %d" % houghLineGap
+    print "edgeThres: %f" % edgeThres
 
     # Range tolerance
-    threshold = 1.0
+    threshold = 5
 
     # Detect the straight lines on the image
     lines = getStrtLine(
@@ -95,6 +104,9 @@ def main():
     oldLineFile.write("X Y Z R G B\n")
     newLineFile.write("X Y Z R G B\n")
 
+    lineCount = 0
+    densRateList = []
+    print "Ratio\tBefore\tAfter"
     for line in lines:
         # Generate point coordinates with start and end point
         x1, y1, x2, y2 = line[0][0], line[0][1], line[1][0], line[1][1]
@@ -137,8 +149,11 @@ def main():
 
             # Generate the sign parameters
             sign = np.ones((len(xi), 1))
-            sign[(np.abs(np.arctan2(ye-ys, xe-xs)-np.arctan2(yi-ys, xi-xs))) >
-                 np.radians(60)] = -1
+            mainDirect = np.arctan2(ye-ys, xe-xs) % (2*np.pi)
+            ptDirect = np.arctan2(yi-ys, xi-xs) % (2*np.pi)
+            angleDiff = np.abs(mainDirect - ptDirect)
+
+            sign[(angleDiff > (np.pi/2)) & (angleDiff < (3*np.pi/2))] = -1
 
             if s0 < edgeThres:
                 # Rebuild the object point with image coordinates
@@ -157,8 +172,20 @@ def main():
                     newLineFile.write(
                         "%.6f %.6f %.6f 255 0 0\n" % tuple(newPt))
 
+                # Update counters
+                lineCount += 1
+                densRateList.append(100.0*len(location)/len(xi))
+
+                # Output information on the densification process
+                print "%.2f%%\t%d\t%d" % \
+                    (100.0*len(location)/len(xi), len(location), len(xi))
+
     oldLineFile.close()
     newLineFile.close()
+    print "Totally %d lines were detected" % len(lines)
+    print "Average rate of densification: %.2f%%" % \
+        np.array(densRateList).mean()
+    print "Success rate: %.2f%%" % (100.0 * lineCount / len(lines))
 
 
 if __name__ == '__main__':

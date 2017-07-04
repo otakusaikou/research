@@ -87,14 +87,17 @@ def rebuild(IOFileName, EOFileName, outputFileName, ri, ci, params):
 def main():
     # Define file names
     IOFileName = '../param/IO.txt'
-    EOFileName = '../param/EO_P1_L.txt'
-    ptFileName = '../ptCloud/P1_L.txt'
+    EOFileName = '../param/all/EO_P1_L.txt'
+    ptFileName = '../ptCloud/original/P1_L.txt'
     outputFileName = '../ptCloud/P1_L_addPlane.txt'
-    referenceImgName = '../images/P1_L_reference.bmp'
-    targetImgName = '../images/P1_L_target.bmp'
+    referenceImgName = '../images/all/P1_L_reference.bmp'
+    targetImgName = '../images/all/P1_L_target.bmp'
 
     # Threshold for RANSAC plane fitting
     thresAcc = 0.03
+
+    # Output the parameter settings
+    print "thresAcc: %f" % thresAcc
 
     # Threshold for number of reference point
     thresNum = 10
@@ -110,21 +113,23 @@ def main():
     targetArea = imread(targetImgName, True)
 
     # Rebuild planes with every numeric labels in images
+    planeCount = 0
+    densRateList = []
+    numPlane = len(np.unique(referenceArea))
+    print "Label Ratio Before After params"
     newPt = np.array([])
     for v in np.unique(referenceArea):
         if v == 255:        # Ignore 255
-            print "Ignore label: 255"
             continue
 
         # Get the reference 3D points with image patch
         refImgPts = np.argwhere(referenceArea == v)
-        print "Label: %d\nNumber of pixel: %d" % (v, len(refImgPts))
 
-        distance, location = tree.query(
+        dis, loc = tree.query(
             refImgPts, k=1, distance_upper_bound=0.5)
 
         # Keep only valid index only
-        idx = location[distance != np.inf]
+        idx = loc[dis != np.inf]
 
         if len(idx) <= thresNum:
             print "Insufficient reference point, ignore this image patch!"
@@ -134,7 +139,6 @@ def main():
 
         # Calculate the plane parameters
         params, s0 = getParam(refPts, thresAcc)
-        print "a=%.6f, b=%.6f, c=%.6f, sigma0=%.6f\n" % (params + s0)
 
         # Get target image coordinates within target image patch
         tarImgPts = np.argwhere(targetArea == v)
@@ -143,12 +147,33 @@ def main():
         newPt = np.append(newPt, rebuild(IOFileName, EOFileName,
                                          outputFileName, ri, ci, params))
 
+        # Get number of the object points before densification
+        dis, loc = tree.query(
+            tarImgPts, k=1, distance_upper_bound=0.5)
+        numBefDens = (~np.isinf(dis)).sum()
+
+        # Update counters
+        planeCount += 1
+
+        densRate = 100.0 * (len(tarImgPts)-numBefDens) / numBefDens
+        densRateList.append(densRate)
+
+        # Output information on the densification process
+        print "%d %.2f%% %d %d" % (v, densRate, numBefDens, len(tarImgPts)),
+
+        print "a=%.6f, b=%.6f, c=%.6f, sigma0=%.6f" % (params + s0)
+
     np.savetxt(
         outputFileName,
         newPt.reshape(-1, 3),
         fmt="%.6f %.6f %.6f 255 0 0",
         header="X Y Z R G B",
         comments='')
+
+    print "Totally %d planes were marked" % numPlane
+    print "Average rate of densification: %.2f%%" % \
+        np.array(densRateList).mean()
+    print "Success rate: %.2f%%" % (100.0 * planeCount / (numPlane - 1))
 
 
 if __name__ == "__main__":

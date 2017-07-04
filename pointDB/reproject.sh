@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # The input filenames
-dataName=data1
+dataName=all
 IOFilePath=../param/IO.txt
 EOFilePath=../param/$dataName
 imgFilePath=../images/$dataName

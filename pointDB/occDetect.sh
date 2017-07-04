@@ -3,7 +3,7 @@
 truncate cid_list.txt --size 0
 
 # The input filenames
-dataName=data1
+dataName=all
 EOFilePath=../param/$dataName
 imgFilePath=../images/$dataName
 

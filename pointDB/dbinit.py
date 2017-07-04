@@ -35,7 +35,7 @@ def main():
     user = 'postgres'
 
     # Define file names
-    ptFileName = os.path.abspath('../ptCloud/XYZ_edited_full_addPlane.txt')
+    ptFileName = os.path.abspath('../ptCloud/XYZ_edited_full_addFull.txt')
 
     # Ask user whether to reinitialize the database
     flag = raw_input("Initialize database? (Y/N) ").lower()

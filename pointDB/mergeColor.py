@@ -72,12 +72,12 @@ def creMulClr(cur, conn, n):
 --Create pointID-imageID table
 DROP TABLE IF EXISTS mulclr;
 CREATE TABLE mulclr AS
-SELECT DISTINCT
+SELECT
     point3d_no,
     array_to_string(ARRAY_AGG(image_no ORDER BY image_no), ' ') idstr
 FROM colorinfo
 GROUP BY point3d_no
-HAVING COUNT(id ORDER BY id) = %s
+HAVING COUNT(id) = %s
 ORDER BY idstr;
 
 --Get the number of points for different id string
